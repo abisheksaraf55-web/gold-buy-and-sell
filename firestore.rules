@@ -1,15 +1,31 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Anyone using this bullion terminal can read and manage their purchase records
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
     match /transactions/{transactionId} {
-      allow read, write: if true;
+      allow list: if isSignedIn();
+      allow get, write: if isSignedIn() && isValidId(transactionId);
     }
+
     match /shopDetails/{shopId} {
-      allow read, write: if true;
+      allow list: if isSignedIn();
+      allow get, write: if isSignedIn() && isValidId(shopId);
     }
+
     match /marketRates/{rateId} {
-      allow read, write: if true;
+      allow list: if isSignedIn();
+      allow get, write: if isSignedIn() && isValidId(rateId);
     }
   }
 }

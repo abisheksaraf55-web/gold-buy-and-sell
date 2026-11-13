@@ -714,18 +714,19 @@ export const BuyingForm: React.FC<BuyingFormProps> = ({
 
                 {/* 3-Puste Lineage Section (३ पुस्ते पारिवारिक विवरण) */}
                 <div className="p-3.5 bg-amber-50/50 border border-amber-200/80 rounded-xl space-y-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <h4 className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
-                      <UserCheck className="w-4 h-4 text-amber-700" />
+                      <UserCheck className="w-4 h-4 text-amber-700 shrink-0" />
                       <span>३ पुस्ते विवरण (3-Generation Lineage for Legal Deed)</span>
                     </h4>
                     <span className="text-[10px] text-amber-800 font-medium">नेपाली कानुनी लिखतका लागि अनिवार्य</span>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-neutral-800 mb-1">
-                        १. बाजेको नाम (Grandfather Name) *
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-stretch">
+                    <div className="flex flex-col justify-between">
+                      <label className="block text-xs font-semibold text-neutral-800 mb-1.5 leading-snug">
+                        <span className="block">१. बाजेको नाम *</span>
+                        <span className="text-[10px] font-medium text-neutral-500 block">(Grandfather Name)</span>
                       </label>
                       <input
                         type="text"
@@ -736,9 +737,10 @@ export const BuyingForm: React.FC<BuyingFormProps> = ({
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-xs font-semibold text-neutral-800 mb-1">
-                        २. बाबुको नाम (Father Name) *
+                    <div className="flex flex-col justify-between">
+                      <label className="block text-xs font-semibold text-neutral-800 mb-1.5 leading-snug">
+                        <span className="block">२. बाबुको नाम *</span>
+                        <span className="text-[10px] font-medium text-neutral-500 block">(Father Name)</span>
                       </label>
                       <input
                         type="text"
@@ -753,9 +755,10 @@ export const BuyingForm: React.FC<BuyingFormProps> = ({
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-xs font-semibold text-neutral-800 mb-1">
-                        ३. पति / पत्नीको नाम (Spouse Name)
+                    <div className="flex flex-col justify-between">
+                      <label className="block text-xs font-semibold text-neutral-800 mb-1.5 leading-snug">
+                        <span className="block">३. पति / पत्नीको नाम</span>
+                        <span className="text-[10px] font-medium text-neutral-500 block">(Spouse Name)</span>
                       </label>
                       <input
                         type="text"

@@ -43,8 +43,14 @@ import {
   X,
   Settings,
   ChevronRight,
-  HardDrive
+  HardDrive,
+  LogOut,
+  Loader2
 } from 'lucide-react';
+import { onAuthStateChanged, User } from 'firebase/auth';
+import { auth, signInWithGoogle, signOutGoogle } from './firebase';
+import { LoginPage } from './components/LoginPage';
+import { ShopSetupPage } from './components/ShopSetupPage';
 import sealBadge from './assets/images/nepal_bullion_seal_1790317148844.jpg';
 import { 
   persistTransaction, 
@@ -57,13 +63,19 @@ import {
 } from './services/dataStorageService';
 
 export default function App() {
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState<boolean>(true);
+  const [isSigningIn, setIsSigningIn] = useState<boolean>(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+
   const [view, setView] = useState<'form' | 'register' | 'deed_view'>('deed_view');
   const [transactions, setTransactions] = useState<PurchaseTransaction[]>(() => getStoredTransactions());
   const [selectedTx, setSelectedTx] = useState<PurchaseTransaction | null>(() => {
     const initial = getStoredTransactions();
     return initial.length > 0 ? initial[0] : null;
   });
-  const [shop, setShop] = useState<ShopDetails>(DEFAULT_SHOP_DETAILS);
+  const [shop, setShop] = useState<ShopDetails>(() => getShopDetails());
+  const [isCheckingShopSetup, setIsCheckingShopSetup] = useState<boolean>(true);
   const [rates, setRates] = useState<BullionMarketRates>(DEFAULT_RATES);
 
   // Modals & Sidebar
@@ -72,8 +84,55 @@ export default function App() {
   const [isShopSettingsOpen, setIsShopSettingsOpen] = useState(false);
   const [isDataStorageOpen, setIsDataStorageOpen] = useState(false);
 
-  // Load from local storage and sync with Firestore on mount
+  // Listen to Firebase Auth state changes
   useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
+      setUser(firebaseUser);
+      setAuthLoading(false);
+      if (!firebaseUser) {
+        setIsCheckingShopSetup(true);
+      }
+    });
+    return () => unsubscribeAuth();
+  }, []);
+
+  const handleGoogleSignIn = async () => {
+    setIsSigningIn(true);
+    setAuthError(null);
+    try {
+      await signInWithGoogle();
+    } catch (err: any) {
+      const code = err?.code || '';
+      if (code === 'auth/popup-closed-by-user') {
+        setAuthError('Google लगइन पपअप बन्द गरियो। कृपया पुनः प्रयास गर्नुहोस्।');
+      } else if (code === 'auth/popup-blocked') {
+        setAuthError('ब्राउजरले पपअप रोक्यो (Popup Blocked)। कृपया यस साइटको लागि पपअप अनुमति दिनुहोस्।');
+      } else if (code === 'auth/unauthorized-domain') {
+        setAuthError('यो डोमेन Firebase Console मा अधिकृत गरिएको छैन (Unauthorized domain)।');
+      } else {
+        setAuthError(err?.message || 'Google बाट लगइन गर्न सकिएन। कृपया पुनः प्रयास गर्नुहोस्।');
+      }
+    } finally {
+      setIsSigningIn(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    setIsSidebarOpen(false);
+    try {
+      await signOutGoogle();
+    } catch (err) {
+      console.error('Sign out failed:', err);
+    }
+  };
+
+  // Load from local storage and sync with Firestore only once user is authenticated
+  useEffect(() => {
+    if (authLoading || !user) return;
+
+    let isCancelled = false;
+    setIsCheckingShopSetup(true);
+
     const loadedTx = getStoredTransactions();
     setTransactions(loadedTx);
     if (loadedTx.length > 0) {
@@ -84,6 +143,7 @@ export default function App() {
 
     // Fetch latest from Cloud Firestore
     fetchTransactions().then((cloudTx) => {
+      if (isCancelled) return;
       if (cloudTx && cloudTx.length > 0) {
         setTransactions(cloudTx);
         setSelectedTx((prev) => {
@@ -94,13 +154,21 @@ export default function App() {
       }
     });
 
-    fetchShopDetails().then((cloudShop) => {
-      if (cloudShop && cloudShop.nameNepali) {
-        setShop(cloudShop);
-      }
-    });
+    fetchShopDetails()
+      .then((cloudShop) => {
+        if (isCancelled) return;
+        if (cloudShop && cloudShop.nameNepali) {
+          setShop(cloudShop);
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setIsCheckingShopSetup(false);
+        }
+      });
 
     fetchMarketRates().then((cloudRates) => {
+      if (isCancelled) return;
       if (cloudRates && cloudRates.chhapawalGoldPerTola) {
         setRates(cloudRates);
       }
@@ -115,9 +183,10 @@ export default function App() {
     });
 
     return () => {
+      isCancelled = true;
       unsubscribe();
     };
-  }, []);
+  }, [authLoading, user]);
 
   const refreshAllData = async () => {
     const freshTx = await fetchTransactions();
@@ -140,15 +209,58 @@ export default function App() {
     persistMarketRates(newRates);
   };
 
-  const handleSaveShopDetails = (newShop: ShopDetails) => {
+  const handleSaveShopDetails = async (newShop: ShopDetails) => {
     setShop(newShop);
-    persistShopDetails(newShop);
+    await persistShopDetails(newShop);
+  };
+
+  const handleCompleteOneTimeSetup = async (updatedShop: ShopDetails) => {
+    const completedShop: ShopDetails = { ...updatedShop, isSetupCompleted: true };
+    setShop(completedShop);
+    await persistShopDetails(completedShop);
   };
 
   const handleViewDeed = (tx: PurchaseTransaction) => {
     setSelectedTx(tx);
     setView('deed_view');
   };
+
+  if (authLoading || (user && isCheckingShopSetup)) {
+    return (
+      <div className="min-h-screen bg-neutral-100 flex items-center justify-center p-6">
+        <div className="flex flex-col items-center gap-3 text-neutral-700">
+          <Loader2 className="w-7 h-7 animate-spin text-amber-600" />
+          <p className="text-xs font-semibold tracking-wide">
+            {authLoading
+              ? 'प्रणाली सत्र जाँच हुँदैछ (Verifying session)...'
+              : 'पसल विवरण लोड हुँदैछ (Loading shop profile)...'}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <LoginPage
+        onSignIn={handleGoogleSignIn}
+        isSigningIn={isSigningIn}
+        authError={authError}
+        onDismissError={() => setAuthError(null)}
+      />
+    );
+  }
+
+  if (!shop.isSetupCompleted) {
+    return (
+      <ShopSetupPage
+        shop={shop}
+        user={user}
+        onCompleteSetup={handleCompleteOneTimeSetup}
+        onSignOut={handleSignOut}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-neutral-100 flex flex-col font-sans text-neutral-900 overflow-x-hidden">
@@ -241,6 +353,25 @@ export default function App() {
             >
               <Settings className="w-3.5 h-3.5 text-amber-400 shrink-0" />
               <span className="hidden sm:inline">सेटिङ & डेटा</span>
+            </button>
+
+            {/* Signed-in Google account Sign Out */}
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-neutral-200 rounded-lg transition-colors cursor-pointer whitespace-nowrap shrink-0"
+              title={`लगआउट (${user.email || user.displayName || 'Google Account'})`}
+            >
+              {user.photoURL ? (
+                <img
+                  src={user.photoURL}
+                  alt={user.displayName || 'User'}
+                  className="w-4 h-4 rounded-full object-cover shrink-0"
+                  referrerPolicy="no-referrer"
+                />
+              ) : null}
+              <LogOut className="w-3.5 h-3.5 text-neutral-300 shrink-0" />
+              <span className="hidden xl:inline">लगआउट</span>
             </button>
           </div>
         </div>
@@ -416,15 +547,47 @@ export default function App() {
               </div>
             </div>
 
-            {/* Sidebar Footer */}
-            <div className="p-4 border-t border-neutral-800 text-[11px] text-neutral-400 space-y-1">
-              <div className="flex items-center gap-1.5 text-emerald-400 font-medium">
-                <ShieldCheck className="w-3.5 h-3.5" />
-                <span>क्लाउड डेटाबेस सक्रिय (Firestore Active)</span>
+            {/* Sidebar Footer with Signed-in User & Sign Out */}
+            <div className="p-4 border-t border-neutral-800 text-[11px] text-neutral-400 space-y-3">
+              <div className="flex items-center gap-2.5">
+                {user.photoURL ? (
+                  <img
+                    src={user.photoURL}
+                    alt={user.displayName || 'Account'}
+                    className="w-8 h-8 rounded-full border border-neutral-700 object-cover shrink-0"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-amber-600 text-white font-bold flex items-center justify-center text-xs shrink-0">
+                    {(user.displayName || user.email || 'U').charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold text-white truncate">
+                    {user.displayName || 'अधिकृत प्रयोगकर्ता'}
+                  </p>
+                  <p className="text-[10px] text-neutral-400 truncate">
+                    {user.email}
+                  </p>
+                </div>
               </div>
-              <p className="text-[10px] text-neutral-500">
-                कुल कारोबार: {transactions.length} वटा सम्झौता
-              </p>
+
+              <div className="flex items-center justify-between text-[10px] text-neutral-400 pt-1 border-t border-neutral-800/80">
+                <div className="flex items-center gap-1.5 text-emerald-400 font-medium">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Firestore सक्रिय</span>
+                </div>
+                <span className="tabular-nums">{transactions.length} सम्झौता</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="w-full py-2 px-3 rounded-lg bg-neutral-800 hover:bg-red-950/70 hover:text-red-200 border border-neutral-700 hover:border-red-800/70 text-neutral-200 text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>लगआउट गर्नुहोस् (Sign Out)</span>
+              </button>
             </div>
           </div>
         </div>
