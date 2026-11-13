@@ -1020,7 +1020,7 @@ export async function renderNepaliLegalDeedPagesToCanvases(
 
     // ID Front & Back Cards (Large & Crisp for A4 printing)
     const idCardAreaY = summaryY + 62;
-    const idCardH = 560;
+    const idCardH = 540;
     const idCardW = idPage.contentWidth;
 
     // 1. ID Front Frame
@@ -1050,7 +1050,7 @@ export async function renderNepaliLegalDeedPagesToCanvases(
     }
 
     // 2. ID Back Frame
-    const idBackY = idCardAreaY + idCardH + 26;
+    const idBackY = idCardAreaY + idCardH + 24;
     idCtx.fillStyle = '#ffffff';
     idCtx.fillRect(idPage.contentLeft, idBackY, idCardW, idCardH);
     idCtx.strokeStyle = '#000000';
@@ -1074,13 +1074,29 @@ export async function renderNepaliLegalDeedPagesToCanvases(
       idCtx.textAlign = 'left';
     }
 
-    // Verification note above footer
-    const signNoteY = idBackY + idCardH + 42;
-    idCtx.font = 'bold 17px "Mukta", sans-serif';
+    // Verification Signatures with generous vertical gap above lines for physical signing
+    const page2SigLineY = idBackY + idCardH + 115;
+    idCtx.strokeStyle = '#000000';
+    idCtx.lineWidth = 2;
+
+    // Left Seller Signature Line
+    idCtx.beginPath();
+    idCtx.moveTo(idPage.contentLeft, page2SigLineY);
+    idCtx.lineTo(idPage.contentLeft + 340, page2SigLineY);
+    idCtx.stroke();
+
+    // Right Proprietor Signature Line
+    idCtx.beginPath();
+    idCtx.moveTo(idPage.contentRight - 380, page2SigLineY);
+    idCtx.lineTo(idPage.contentRight, page2SigLineY);
+    idCtx.stroke();
+
+    idCtx.font = 'bold 17.5px "Mukta", sans-serif';
     idCtx.fillStyle = '#000000';
-    idCtx.fillText('बिक्रेताको दस्तखत: ____________________________', idPage.contentLeft, signNoteY);
+    idCtx.textAlign = 'left';
+    idCtx.fillText('बिक्रेताको दस्तखत', idPage.contentLeft, page2SigLineY + 26);
     idCtx.textAlign = 'right';
-    idCtx.fillText('सक्कल बमोजिम नक्कल ठीक छ (सञ्चालक): ____________________________', idPage.contentRight, signNoteY);
+    idCtx.fillText('सक्कल बमोजिम नक्कल ठीक छ (सञ्चालक)', idPage.contentRight, page2SigLineY + 26);
     idCtx.textAlign = 'left';
   }
 

@@ -656,19 +656,19 @@ export const LegalDeedPrint: React.FC<LegalDeedPrintProps> = ({
                   <div className="bg-neutral-200 border-b border-black px-3 py-2 print:py-1 text-sm print:text-xs font-extrabold text-black">
                     १. परिचयपत्र / नागरिकता प्रमाणपत्रको अगाडिको भाग (ID Card Front)
                   </div>
-                  <div className="p-4 print:p-2 flex items-center justify-center min-h-[280px] print:min-h-[220px] bg-white">
+                  <div className="p-4 print:p-2 flex items-center justify-center min-h-[280px] print:min-h-[205px] bg-white">
                     {seller.idCardFrontUrl ? (
                       <img 
                         src={seller.idCardFrontUrl} 
                         alt="ID Front" 
-                        className="max-h-[340px] print:max-h-[260px] max-w-full object-contain mx-auto border border-black rounded"
+                        className="max-h-[340px] print:max-h-[240px] max-w-full object-contain mx-auto border border-black rounded"
                         referrerPolicy="no-referrer"
                       />
                     ) : seller.sellerPhotoUrl && !seller.idCardBackUrl ? (
                       <img 
                         src={seller.sellerPhotoUrl} 
                         alt="Seller Portrait" 
-                        className="max-h-[340px] print:max-h-[260px] max-w-full object-contain mx-auto border border-black rounded"
+                        className="max-h-[340px] print:max-h-[240px] max-w-full object-contain mx-auto border border-black rounded"
                         referrerPolicy="no-referrer"
                       />
                     ) : (
@@ -683,12 +683,12 @@ export const LegalDeedPrint: React.FC<LegalDeedPrintProps> = ({
                   <div className="bg-neutral-200 border-b border-black px-3 py-2 print:py-1 text-sm print:text-xs font-extrabold text-black">
                     २. परिचयपत्र / नागरिकता प्रमाणपत्रको पछाडिको भाग (ID Card Back)
                   </div>
-                  <div className="p-4 print:p-2 flex items-center justify-center min-h-[280px] print:min-h-[220px] bg-white">
+                  <div className="p-4 print:p-2 flex items-center justify-center min-h-[280px] print:min-h-[205px] bg-white">
                     {seller.idCardBackUrl ? (
                       <img 
                         src={seller.idCardBackUrl} 
                         alt="ID Back" 
-                        className="max-h-[340px] print:max-h-[260px] max-w-full object-contain mx-auto border border-black rounded"
+                        className="max-h-[340px] print:max-h-[240px] max-w-full object-contain mx-auto border border-black rounded"
                         referrerPolicy="no-referrer"
                       />
                     ) : (
@@ -700,14 +700,14 @@ export const LegalDeedPrint: React.FC<LegalDeedPrintProps> = ({
                 </div>
               </div>
 
-              {/* Verification Signatures on Page 2 */}
-              <div className="pt-8 print:pt-4 flex flex-wrap items-center justify-between gap-6 text-sm print:text-xs font-bold text-black">
+              {/* Verification Signatures on Page 2 (with generous vertical gap above lines for physical signing) */}
+              <div className="pt-16 print:pt-12 pb-2 print:pb-1 flex flex-wrap items-end justify-between gap-8 text-sm print:text-xs font-bold text-black">
                 <div>
-                  <div className="border-b-2 border-black w-56 mb-1" />
+                  <div className="border-b-2 border-black w-60 mb-1.5" />
                   <span>बिक्रेताको दस्तखत</span>
                 </div>
                 <div className="text-right">
-                  <div className="border-b-2 border-black w-64 ml-auto mb-1" />
+                  <div className="border-b-2 border-black w-68 ml-auto mb-1.5" />
                   <span>सक्कल बमोजिम नक्कल ठीक छ (सञ्चालक)</span>
                 </div>
               </div>
