@@ -1,0 +1,55 @@
+{
+  "entities": {
+    "transactions": {
+      "fields": {
+        "id": { "type": "string", "description": "Primary key ID" },
+        "serialNo": { "type": "number", "description": "Sequential integer contract serial number" },
+        "contractSerialNumber": { "type": "string", "description": "Formatted serial number (e.g. SN-2083-0001)" },
+        "voucherNumber": { "type": "string", "description": "Accounting voucher code" },
+        "fiscalYear": { "type": "string", "description": "Bikram Sambat fiscal year" },
+        "dateBS": { "type": "string", "description": "Bikram Sambat date" },
+        "dateAD": { "type": "string", "description": "Gregorian date" },
+        "time": { "type": "string", "description": "Time of transaction" },
+        "seller": { "type": "map", "description": "Seller KYC details, identity, and biometrics" },
+        "items": { "type": "array", "description": "Purchased bullion items" },
+        "declaration": { "type": "map", "description": "Legal declaration under Muluki Criminal Code" },
+        "payment": { "type": "map", "description": "Payment breakdown and mode" },
+        "witness": { "type": "map", "description": "Witness verification info" },
+        "shop": { "type": "map", "description": "Shop and proprietor info" },
+        "totalGrossGrams": { "type": "number", "description": "Gross metal weight in grams" },
+        "totalNetGrams": { "type": "number", "description": "Net pure metal weight in grams" },
+        "totalNetTola": { "type": "number", "description": "Net pure metal weight in tola" },
+        "grandTotalAmount": { "type": "number", "description": "Grand total payout in NPR" },
+        "tamperVerificationHash": { "type": "string", "description": "Tamper-evident verification hash" },
+        "complianceRating": { "type": "string", "description": "Legal compliance rating" },
+        "status": { "type": "string", "description": "Status of transaction" },
+        "createdAt": { "type": "string", "description": "Timestamp ISO string" }
+      }
+    },
+    "shopDetails": {
+      "fields": {
+        "nameNepali": { "type": "string", "description": "Shop name in Nepali" },
+        "nameEnglish": { "type": "string", "description": "Shop name in English" },
+        "proprietorName": { "type": "string", "description": "Proprietor name" },
+        "panVatNumber": { "type": "string", "description": "PAN or VAT number" },
+        "businessRegNumber": { "type": "string", "description": "Business registration number" },
+        "fenegosidaMembershipNo": { "type": "string", "description": "FENEGOSIDA membership number" },
+        "address": { "type": "string", "description": "Physical address" },
+        "phone": { "type": "string", "description": "Phone number" },
+        "email": { "type": "string", "description": "Email address" },
+        "stampSealUrl": { "type": "string", "description": "Shop stamp or seal data URL" },
+        "signatureUrl": { "type": "string", "description": "Proprietor signature data URL" },
+        "isSetupCompleted": { "type": "boolean", "description": "Setup completion flag" }
+      }
+    },
+    "marketRates": {
+      "fields": {
+        "chhapawalGoldPerTola": { "type": "number", "description": "Fine 24K gold rate per tola" },
+        "tezabiGoldPerTola": { "type": "number", "description": "Tezabi 22K gold rate per tola" },
+        "gold18kPerTola": { "type": "number", "description": "18K gold rate per tola" },
+        "fineSilverPerTola": { "type": "number", "description": "Fine silver rate per tola" },
+        "lastUpdated": { "type": "string", "description": "Last updated date" }
+      }
+    }
+  }
+}

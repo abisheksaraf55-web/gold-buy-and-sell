@@ -1,0 +1,6 @@
+{
+  "name": "Nepal Bullion Legal Purchase & KYC System",
+  "description": "Legally compliant gold and silver buying form, seller KYC verification, AML compliance and tamper-evident purchase deed for jewelers in Nepal.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

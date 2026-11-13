@@ -1,0 +1,106 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Mukta', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  }
+  
+  h1, h2, h3, .font-serif {
+    font-family: 'Mukta', 'Cinzel', serif;
+  }
+
+  .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 6mm 7mm 16mm 7mm;
+  }
+
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  #root, #root > div {
+    background: #ffffff !important;
+    min-height: auto !important;
+    height: auto !important;
+    overflow: visible !important;
+    display: block !important;
+  }
+
+  /* Hide screen headers, modals, footers, buttons and other UI elements */
+  header, footer, nav, button, .print\:hidden, [role="dialog"] {
+    display: none !important;
+  }
+
+  /* Make sure main wrapper doesn't restrict print layout */
+  main {
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Ensure multi-page A4 deed prints cleanly with high-contrast black ink */
+  #printable-deed {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    display: block !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  #printable-deed * {
+    color: #000000 !important;
+  }
+
+  #printable-deed .print-white-text {
+    color: #ffffff !important;
+  }
+
+  .deed-a4-page {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 1.5mm !important;
+    border: 1.5px solid #000000 !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    overflow: visible !important;
+  }
+
+  .deed-page-break {
+    page-break-before: always !important;
+    break-before: page !important;
+  }
+
+  /* Prevent awkward table row splitting */
+  tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Ensure image colors and seals print crisply */
+  img {
+    max-width: 100% !important;
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+}

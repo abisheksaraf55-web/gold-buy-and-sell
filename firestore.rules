@@ -1,0 +1,15 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Anyone using this bullion terminal can read and manage their purchase records
+    match /transactions/{transactionId} {
+      allow read, write: if true;
+    }
+    match /shopDetails/{shopId} {
+      allow read, write: if true;
+    }
+    match /marketRates/{rateId} {
+      allow read, write: if true;
+    }
+  }
+}
