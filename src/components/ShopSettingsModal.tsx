@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ShopDetails } from '../types/bullion';
-import { Building2, X, Check, Save } from 'lucide-react';
+import { Building2, X, Save } from 'lucide-react';
 
 interface ShopSettingsModalProps {
   isOpen: boolean;
@@ -16,6 +16,12 @@ export const ShopSettingsModal: React.FC<ShopSettingsModalProps> = ({
   onSave,
 }) => {
   const [formData, setFormData] = useState<ShopDetails>(shop);
+
+  useEffect(() => {
+    if (isOpen) {
+      setFormData(shop);
+    }
+  }, [shop, isOpen]);
 
   if (!isOpen) return null;
 

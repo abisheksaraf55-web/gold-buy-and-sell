@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BullionMarketRates } from '../types/bullion';
-import { formatNPR, toNepaliDigits, GRAMS_PER_TOLA } from '../utils/nepalBullionCalculations';
-import { TrendingUp, Edit2, Check, RefreshCw, Scale } from 'lucide-react';
+import { formatNPR, GRAMS_PER_TOLA } from '../utils/nepalBullionCalculations';
+import { TrendingUp, Edit2, Check, Scale } from 'lucide-react';
 
 interface RateBoardProps {
   rates: BullionMarketRates;
@@ -11,6 +11,10 @@ interface RateBoardProps {
 export const RateBoard: React.FC<RateBoardProps> = ({ rates, onUpdateRates }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [formRates, setFormRates] = useState<BullionMarketRates>(rates);
+
+  useEffect(() => {
+    setFormRates(rates);
+  }, [rates]);
 
   const handleSave = () => {
     onUpdateRates({

@@ -51,6 +51,7 @@ import {
   fetchTransactions, 
   fetchShopDetails,
   persistShopDetails,
+  fetchMarketRates,
   persistMarketRates,
   subscribeToTransactions
 } from './services/dataStorageService';
@@ -99,6 +100,12 @@ export default function App() {
       }
     });
 
+    fetchMarketRates().then((cloudRates) => {
+      if (cloudRates && cloudRates.chhapawalGoldPerTola) {
+        setRates(cloudRates);
+      }
+    });
+
     // Realtime listener
     const unsubscribe = subscribeToTransactions((updatedList) => {
       setTransactions(updatedList);
@@ -117,6 +124,8 @@ export default function App() {
     setTransactions(freshTx);
     const freshShop = await fetchShopDetails();
     setShop(freshShop);
+    const freshRates = await fetchMarketRates();
+    setRates(freshRates);
   };
 
   const handleTransactionComplete = (newTx: PurchaseTransaction) => {

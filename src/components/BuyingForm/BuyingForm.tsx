@@ -29,6 +29,7 @@ import {
 } from '../../utils/nepalBullionCalculations';
 import { SignaturePad } from '../SignaturePad';
 import { ThumbprintPad } from '../ThumbprintPad';
+import { DocumentCropModal } from '../DocumentCropModal';
 import { extractKycFromIdImage, ExtractedIdData } from '../../utils/idOcrHelper';
 import { optimizeImageForOcr } from '../../utils/imageOptimizer';
 import { 
@@ -52,7 +53,8 @@ import {
   Layers,
   Sparkles,
   Loader2,
-  ScanText
+  ScanText,
+  Crop
 } from 'lucide-react';
 
 interface BuyingFormProps {
@@ -187,12 +189,18 @@ export const BuyingForm: React.FC<BuyingFormProps> = ({
     witness1IdNumber: '',
   });
 
-  // Automatic ID OCR state
+  // Automatic ID OCR & document frame cropper state
   const [isScanningId, setIsScanningId] = useState(false);
   const [ocrSuccessMessage, setOcrSuccessMessage] = useState<string | null>(null);
   const [ocrErrorMessage, setOcrErrorMessage] = useState<string | null>(null);
+  const [cropModalState, setCropModalState] = useState<{
+    isOpen: boolean;
+    field: 'idCardFrontUrl' | 'idCardBackUrl';
+    mode: 'camera' | 'crop';
+    imageSrc?: string;
+  } | null>(null);
 
-  // Photo handlers with automated document OCR detection
+  // Photo handlers with rectangular cropper for ID documents & automated OCR
   const handlePhotoUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
     field: 'sellerPhotoUrl' | 'idCardFrontUrl' | 'idCardBackUrl'
@@ -204,7 +212,18 @@ export const BuyingForm: React.FC<BuyingFormProps> = ({
       let dataUrl = event.target?.result as string;
       if (!dataUrl) return;
 
-      // Optimize image resolution for smooth storage and fast OCR analysis
+      // For Front/Back ID documents, always open the automatic rectangular cropper first
+      if (field === 'idCardFrontUrl' || field === 'idCardBackUrl') {
+        setCropModalState({
+          isOpen: true,
+          field,
+          mode: 'crop',
+          imageSrc: dataUrl,
+        });
+        return;
+      }
+
+      // Seller portrait photo: optimize & save directly
       try {
         dataUrl = await optimizeImageForOcr(dataUrl);
       } catch (optErr) {
@@ -212,15 +231,30 @@ export const BuyingForm: React.FC<BuyingFormProps> = ({
       }
 
       setSeller((prev) => ({ ...prev, [field]: dataUrl }));
-
-      // If either front or back ID photo was captured/uploaded, extract or merge information
-      if (field === 'idCardFrontUrl') {
-        await processIdOcr(dataUrl, seller.idCardBackUrl);
-      } else if (field === 'idCardBackUrl') {
-        await processIdOcr(seller.idCardFrontUrl, dataUrl);
-      }
     };
     reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleCropConfirm = async (croppedDataUrl: string) => {
+    if (!cropModalState) return;
+    const targetField = cropModalState.field;
+    setCropModalState(null);
+
+    let finalUrl = croppedDataUrl;
+    try {
+      finalUrl = await optimizeImageForOcr(croppedDataUrl);
+    } catch (optErr) {
+      console.warn('Cropped image optimization skipped:', optErr);
+    }
+
+    setSeller((prev) => ({ ...prev, [targetField]: finalUrl }));
+
+    if (targetField === 'idCardFrontUrl') {
+      await processIdOcr(finalUrl, seller.idCardBackUrl);
+    } else {
+      await processIdOcr(seller.idCardFrontUrl, finalUrl);
+    }
   };
 
   const processIdOcr = async (frontUrl?: string, backUrl?: string) => {
@@ -355,9 +389,14 @@ export const BuyingForm: React.FC<BuyingFormProps> = ({
         const deductionMode = merged.deductionMode || 'itemized';
 
         let netGrams = 0;
-        let stone = Number(merged.stoneWeightGrams ?? merged.stoneDeductionGrams) || 0;
-        let wax = Number(merged.waxDirtWeightGrams) || 0;
-        let jartiPct = Number(merged.jartiPercentage) || 0;
+        const stone =
+          'stoneDeductionGrams' in updates
+            ? Number(updates.stoneDeductionGrams) || 0
+            : 'stoneWeightGrams' in updates
+              ? Number(updates.stoneWeightGrams) || 0
+              : Number(merged.stoneDeductionGrams ?? merged.stoneWeightGrams) || 0;
+        const wax = Number(merged.waxDirtWeightGrams) || 0;
+        const jartiPct = Number(merged.jartiPercentage) || 0;
         let jartiCut = 0;
 
         if (deductionMode === 'direct_grams') {
@@ -975,23 +1014,23 @@ export const BuyingForm: React.FC<BuyingFormProps> = ({
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {/* Front Side Card */}
-                    <div className="border border-blue-200 bg-white rounded-lg p-2.5 flex flex-col justify-between min-h-[170px]">
+                    <div className="border border-blue-200 bg-white rounded-lg p-2.5 flex flex-col justify-between min-h-[185px]">
                       <div className="text-[11px] font-bold text-neutral-700 mb-1 flex items-center justify-between">
                         <span>अगाडिको भाग (Front Side)</span>
                         {seller.idCardFrontUrl && (
                           <span className="text-[9px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
-                            अपलोड भयो
+                            फ्रेम क्रप भयो
                           </span>
                         )}
                       </div>
 
                       {seller.idCardFrontUrl ? (
-                        <div className="space-y-1.5 my-auto">
+                        <div className="space-y-2 my-auto">
                           <div className="relative inline-block">
                             <img
                               src={seller.idCardFrontUrl}
                               alt="Front ID"
-                              className="w-36 h-24 object-cover rounded border border-blue-400 shadow-xs mx-auto"
+                              className="w-40 h-24 object-contain bg-neutral-50 rounded border-2 border-blue-400 shadow-xs mx-auto"
                               referrerPolicy="no-referrer"
                             />
                             {isScanningId && (
@@ -1013,41 +1052,93 @@ export const BuyingForm: React.FC<BuyingFormProps> = ({
                               ✕
                             </button>
                           </div>
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setCropModalState({
+                                  isOpen: true,
+                                  field: 'idCardFrontUrl',
+                                  mode: 'crop',
+                                  imageSrc: seller.idCardFrontUrl,
+                                })
+                              }
+                              className="px-2.5 py-1 text-[10px] font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded inline-flex items-center gap-1 cursor-pointer"
+                            >
+                              <Crop className="w-3 h-3" />
+                              <span>फ्रेम मिलाउनुहोस् (Crop)</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setCropModalState({
+                                  isOpen: true,
+                                  field: 'idCardFrontUrl',
+                                  mode: 'camera',
+                                })
+                              }
+                              className="px-2 py-1 text-[10px] font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded inline-flex items-center gap-1 cursor-pointer"
+                              title="क्यामेरा फ्रेमबाट पुनः खिच्नुहोस्"
+                            >
+                              <Camera className="w-3 h-3" />
+                            </button>
+                          </div>
                         </div>
                       ) : (
-                        <label className="cursor-pointer block border-2 border-dashed border-blue-300 hover:border-blue-600 rounded-md p-3 bg-blue-50/20 transition-all hover:shadow-xs my-auto">
-                          <Upload className="w-4 h-4 text-blue-600 mx-auto mb-1" />
-                          <span className="text-[11px] font-semibold text-neutral-800 block">अगाडि फोटो अपलोड</span>
-                          <span className="text-[9px] text-neutral-500 block">नाम, फोटो, परिचयपत्र नं.</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            capture="environment"
-                            onChange={(e) => handlePhotoUpload(e, 'idCardFrontUrl')}
-                            className="hidden"
-                          />
-                        </label>
+                        <div className="space-y-2 my-auto">
+                          <label className="cursor-pointer block border-2 border-dashed border-blue-400 hover:border-blue-600 rounded-md p-2.5 bg-blue-50/25 transition-all hover:shadow-xs relative">
+                            <div className="w-10 h-6 border-2 border-blue-500/80 rounded-xs mx-auto mb-1 flex items-center justify-center bg-white/80">
+                              <Upload className="w-3.5 h-3.5 text-blue-600" />
+                            </div>
+                            <span className="text-[11px] font-semibold text-neutral-800 block">
+                              अगाडि फोटो अपलोड (Auto Frame)
+                            </span>
+                            <span className="text-[9px] text-neutral-500 block">
+                              आयताकार फ्रेम भित्रको भाग मात्र प्रिन्ट/PDF हुन्छ
+                            </span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => handlePhotoUpload(e, 'idCardFrontUrl')}
+                              className="hidden"
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setCropModalState({
+                                isOpen: true,
+                                field: 'idCardFrontUrl',
+                                mode: 'camera',
+                              })
+                            }
+                            className="w-full py-1.5 px-2 text-[10px] font-semibold text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-md flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                          >
+                            <Camera className="w-3.5 h-3.5 text-amber-700" />
+                            <span>क्यामेरा फ्रेमबाट खिच्नुहोस् (Camera Frame)</span>
+                          </button>
+                        </div>
                       )}
                     </div>
 
                     {/* Back Side Card */}
-                    <div className="border border-blue-200 bg-white rounded-lg p-2.5 flex flex-col justify-between min-h-[170px]">
+                    <div className="border border-blue-200 bg-white rounded-lg p-2.5 flex flex-col justify-between min-h-[185px]">
                       <div className="text-[11px] font-bold text-neutral-700 mb-1 flex items-center justify-between">
                         <span>पछाडिको भाग (Back Side)</span>
                         {seller.idCardBackUrl && (
                           <span className="text-[9px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
-                            अपलोड भयो
+                            फ्रेम क्रप भयो
                           </span>
                         )}
                       </div>
 
                       {seller.idCardBackUrl ? (
-                        <div className="space-y-1.5 my-auto">
+                        <div className="space-y-2 my-auto">
                           <div className="relative inline-block">
                             <img
                               src={seller.idCardBackUrl}
                               alt="Back ID"
-                              className="w-36 h-24 object-cover rounded border border-blue-400 shadow-xs mx-auto"
+                              className="w-40 h-24 object-contain bg-neutral-50 rounded border-2 border-blue-400 shadow-xs mx-auto"
                               referrerPolicy="no-referrer"
                             />
                             {isScanningId && (
@@ -1069,20 +1160,72 @@ export const BuyingForm: React.FC<BuyingFormProps> = ({
                               ✕
                             </button>
                           </div>
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setCropModalState({
+                                  isOpen: true,
+                                  field: 'idCardBackUrl',
+                                  mode: 'crop',
+                                  imageSrc: seller.idCardBackUrl,
+                                })
+                              }
+                              className="px-2.5 py-1 text-[10px] font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded inline-flex items-center gap-1 cursor-pointer"
+                            >
+                              <Crop className="w-3 h-3" />
+                              <span>फ्रेम मिलाउनुहोस् (Crop)</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setCropModalState({
+                                  isOpen: true,
+                                  field: 'idCardBackUrl',
+                                  mode: 'camera',
+                                })
+                              }
+                              className="px-2 py-1 text-[10px] font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded inline-flex items-center gap-1 cursor-pointer"
+                              title="क्यामेरा फ्रेमबाट पुनः खिच्नुहोस्"
+                            >
+                              <Camera className="w-3 h-3" />
+                            </button>
+                          </div>
                         </div>
                       ) : (
-                        <label className="cursor-pointer block border-2 border-dashed border-blue-300 hover:border-blue-600 rounded-md p-3 bg-blue-50/20 transition-all hover:shadow-xs my-auto">
-                          <Upload className="w-4 h-4 text-blue-600 mx-auto mb-1" />
-                          <span className="text-[11px] font-semibold text-neutral-800 block">पछाडि फोटो अपलोड</span>
-                          <span className="text-[9px] text-neutral-500 block">स्थायी ठेगाना, जारी मिति</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            capture="environment"
-                            onChange={(e) => handlePhotoUpload(e, 'idCardBackUrl')}
-                            className="hidden"
-                          />
-                        </label>
+                        <div className="space-y-2 my-auto">
+                          <label className="cursor-pointer block border-2 border-dashed border-blue-400 hover:border-blue-600 rounded-md p-2.5 bg-blue-50/25 transition-all hover:shadow-xs relative">
+                            <div className="w-10 h-6 border-2 border-blue-500/80 rounded-xs mx-auto mb-1 flex items-center justify-center bg-white/80">
+                              <Upload className="w-3.5 h-3.5 text-blue-600" />
+                            </div>
+                            <span className="text-[11px] font-semibold text-neutral-800 block">
+                              पछाडि फोटो अपलोड (Auto Frame)
+                            </span>
+                            <span className="text-[9px] text-neutral-500 block">
+                              आयताकार फ्रेम भित्रको भाग मात्र प्रिन्ट/PDF हुन्छ
+                            </span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => handlePhotoUpload(e, 'idCardBackUrl')}
+                              className="hidden"
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setCropModalState({
+                                isOpen: true,
+                                field: 'idCardBackUrl',
+                                mode: 'camera',
+                              })
+                            }
+                            className="w-full py-1.5 px-2 text-[10px] font-semibold text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-md flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                          >
+                            <Camera className="w-3.5 h-3.5 text-amber-700" />
+                            <span>क्यामेरा फ्रेमबाट खिच्नुहोस् (Camera Frame)</span>
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -2228,6 +2371,22 @@ export const BuyingForm: React.FC<BuyingFormProps> = ({
           </div>
         )}
       </div>
+
+      {/* Interactive Document Rectangle Frame & Auto-Crop Modal */}
+      {cropModalState?.isOpen && (
+        <DocumentCropModal
+          isOpen={cropModalState.isOpen}
+          sideLabel={
+            cropModalState.field === 'idCardFrontUrl'
+              ? 'अगाडिको भाग (Front Side)'
+              : 'पछाडिको भाग (Back Side)'
+          }
+          initialMode={cropModalState.mode}
+          initialImageSrc={cropModalState.imageSrc}
+          onCancel={() => setCropModalState(null)}
+          onConfirm={handleCropConfirm}
+        />
+      )}
     </div>
   );
 };

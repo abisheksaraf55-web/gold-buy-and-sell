@@ -5,11 +5,9 @@ import {
   getDocs, 
   getDoc, 
   deleteDoc, 
-  query, 
-  orderBy, 
   onSnapshot 
 } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 import { 
   PurchaseTransaction, 
   ShopDetails, 
@@ -22,14 +20,58 @@ import {
   saveShopDetails as saveLocalShop,
   getMarketRates,
   saveMarketRates as saveLocalRates,
-  DEFAULT_SHOP_DETAILS,
-  DEFAULT_RATES,
-  SAMPLE_INITIAL_TRANSACTIONS
 } from '../utils/storage';
 
 const TRANSACTIONS_COLLECTION = 'transactions';
-const SETTINGS_COLLECTION = 'shopSettings';
+const SETTINGS_COLLECTION = 'shopDetails';
 const RATES_COLLECTION = 'marketRates';
+
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+    tenantId?: string | null;
+    providerInfo?: {
+      providerId?: string | null;
+      email?: string | null;
+    }[];
+  };
+}
+
+function logFirestoreError(error: unknown, operationType: OperationType, path: string | null): void {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid ?? null,
+      email: auth.currentUser?.email ?? null,
+      emailVerified: auth.currentUser?.emailVerified ?? null,
+      isAnonymous: auth.currentUser?.isAnonymous ?? null,
+      tenantId: auth.currentUser?.tenantId ?? null,
+      providerInfo:
+        auth.currentUser?.providerData?.map((provider) => ({
+          providerId: provider.providerId,
+          email: provider.email,
+        })) || [],
+    },
+    operationType,
+    path,
+  };
+  console.warn('Firestore Error (using offline cache fallback):', JSON.stringify(errInfo));
+}
 
 /**
  * Save transaction to both Cloud Firestore and local offline storage
@@ -42,7 +84,7 @@ export async function persistTransaction(tx: PurchaseTransaction): Promise<void>
     const docRef = doc(db, TRANSACTIONS_COLLECTION, tx.id);
     await setDoc(docRef, tx);
   } catch (err) {
-    console.warn('Firestore sync note (persisted locally):', err);
+    logFirestoreError(err, OperationType.WRITE, `${TRANSACTIONS_COLLECTION}/${tx.id}`);
   }
 }
 
@@ -59,7 +101,7 @@ export async function removeTransaction(id: string): Promise<void> {
     const docRef = doc(db, TRANSACTIONS_COLLECTION, id);
     await deleteDoc(docRef);
   } catch (err) {
-    console.warn('Firestore delete note:', err);
+    logFirestoreError(err, OperationType.DELETE, `${TRANSACTIONS_COLLECTION}/${id}`);
   }
 }
 
@@ -81,7 +123,7 @@ export async function fetchTransactions(): Promise<PurchaseTransaction[]> {
       return records;
     }
   } catch (err) {
-    console.warn('Could not fetch from Firestore, using local data:', err);
+    logFirestoreError(err, OperationType.LIST, TRANSACTIONS_COLLECTION);
   }
   return getStoredTransactions();
 }
@@ -95,7 +137,7 @@ export async function persistShopDetails(shop: ShopDetails): Promise<void> {
     const docRef = doc(db, SETTINGS_COLLECTION, 'profile');
     await setDoc(docRef, shop);
   } catch (err) {
-    console.warn('Firestore shop sync note:', err);
+    logFirestoreError(err, OperationType.WRITE, `${SETTINGS_COLLECTION}/profile`);
   }
 }
 
@@ -112,7 +154,7 @@ export async function fetchShopDetails(): Promise<ShopDetails> {
       return remote;
     }
   } catch (err) {
-    console.warn('Firestore shop fetch note:', err);
+    logFirestoreError(err, OperationType.GET, `${SETTINGS_COLLECTION}/profile`);
   }
   return getShopDetails();
 }
@@ -126,8 +168,26 @@ export async function persistMarketRates(rates: BullionMarketRates): Promise<voi
     const docRef = doc(db, RATES_COLLECTION, 'current');
     await setDoc(docRef, rates);
   } catch (err) {
-    console.warn('Firestore rates sync note:', err);
+    logFirestoreError(err, OperationType.WRITE, `${RATES_COLLECTION}/current`);
   }
+}
+
+/**
+ * Fetch bullion market rates from Firestore; fallback to local storage
+ */
+export async function fetchMarketRates(): Promise<BullionMarketRates> {
+  try {
+    const docRef = doc(db, RATES_COLLECTION, 'current');
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      const remote = snap.data() as BullionMarketRates;
+      saveLocalRates(remote);
+      return remote;
+    }
+  } catch (err) {
+    logFirestoreError(err, OperationType.GET, `${RATES_COLLECTION}/current`);
+  }
+  return getMarketRates();
 }
 
 /**
@@ -150,7 +210,7 @@ export function subscribeToTransactions(onUpdate: (txs: PurchaseTransaction[]) =
         }
       },
       (err) => {
-        console.warn('Firestore onSnapshot note:', err);
+        logFirestoreError(err, OperationType.LIST, TRANSACTIONS_COLLECTION);
       }
     );
   } catch {

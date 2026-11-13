@@ -120,10 +120,8 @@ Output only valid JSON according to the schema.`;
     parts.push({ text: prompt });
 
     const candidateModels = [
-      'gemini-3.8-flash',
-      'gemini-flash-latest',
-      'gemini-3.1-flash-lite',
-      'gemini-3.1-pro-preview'
+      'gemini-4-hydrogen',
+      'gemini-3.1-flash-lite'
     ];
 
     let response: any = null;

@@ -483,7 +483,7 @@ export const LegalDeedPrint: React.FC<LegalDeedPrintProps> = ({
             </div>
 
             {/* Section 5: Witness (साक्षी) */}
-            {witness.witness1Name && (
+            {witness?.witness1Name && (
               <div className="border border-black rounded p-3 print:p-1.5 text-sm print:text-[10.5px] bg-white text-black">
                 <h2 className="text-sm sm:text-base print:text-[11px] font-extrabold text-black border-b border-black pb-1 print:pb-0.5 mb-2 print:mb-1">
                   ५. रोहवर साक्षीको विवरण तथा दस्तखत
@@ -514,7 +514,7 @@ export const LegalDeedPrint: React.FC<LegalDeedPrintProps> = ({
             {/* Open Biometrics, Seller Signature/Info & Buyer Stamp/Signature (NO stamp table!) */}
             <div className="pt-2 print:pt-0.5 text-black break-inside-avoid">
               <h2 className="text-sm sm:text-base print:text-[11px] font-extrabold text-black border-b-2 border-black pb-1.5 print:pb-0.5 mb-4 print:mb-1.5 flex flex-wrap items-center justify-between gap-2">
-                <span>{witness.witness1Name ? '६.' : '५.'} बिक्रेताको औंठाछाप, दस्तखत तथा खरिदकर्ताको आधिकारिक छाप र हस्ताक्षर</span>
+                <span>{witness?.witness1Name ? '६.' : '५.'} बिक्रेताको औंठाछाप, दस्तखत तथा खरिदकर्ताको आधिकारिक छाप र हस्ताक्षर</span>
                 <span className="text-xs print:text-[10px] font-bold text-black">मुलुकी अपराध संहिता २०७४ दफा २४४ बमोजिम</span>
               </h2>
 
