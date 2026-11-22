@@ -15,9 +15,9 @@ import {
 } from 'lucide-react';
 import { 
   exportFullBackupJSON, 
-  importFullBackupJSON, 
-  resetToSampleTransactions 
+  importFullBackupJSON
 } from '../utils/storage';
+import { auth } from '../firebase';
 import { 
   fetchTransactions, 
   persistTransaction 
@@ -45,7 +45,7 @@ export const DataStorageModal: React.FC<DataStorageModalProps> = ({
   // 1. Export JSON Backup
   const handleExportBackup = () => {
     try {
-      const jsonStr = exportFullBackupJSON();
+      const jsonStr = exportFullBackupJSON(auth.currentUser?.uid);
       const blob = new Blob([jsonStr], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -77,7 +77,7 @@ export const DataStorageModal: React.FC<DataStorageModalProps> = ({
     reader.onload = async (event) => {
       try {
         const content = event.target?.result as string;
-        const res = importFullBackupJSON(content);
+        const res = importFullBackupJSON(content, auth.currentUser?.uid);
         if (res.success) {
           // Sync imported transactions to Firestore as well
           setIsSyncing(true);

@@ -58,24 +58,51 @@ export const PoliceAuditRegister: React.FC<PoliceAuditRegisterProps> = ({
     )
   );
 
-  // Filtered transactions with comprehensive multi-attribute search
+  // Normalize Nepali Devanagari numerals (०-९) -> ASCII (0-9) so search matches both scripts
+  const normalizeDigits = (value: string): string => {
+    const nepaliDigits = '०१२३४५६७८९';
+    return value.replace(/[०-९]/g, (ch) => String(nepaliDigits.indexOf(ch)));
+  };
+
+  // Extract YYYY-MM-DD AD date from a transaction (with createdAt fallback)
+  const getTransactionDateAD = (tx: PurchaseTransaction): string => {
+    const raw = (tx.dateAD || '').trim().replace(/\//g, '-');
+    const match = raw.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (match) return match[1];
+    if (tx.createdAt) {
+      const createdMatch = tx.createdAt.trim().match(/^(\d{4}-\d{2}-\d{2})/);
+      if (createdMatch) return createdMatch[1];
+    }
+    return '';
+  };
+
+  // Filtered transactions with comprehensive multi-attribute search & date range filter
   const filtered = transactions.filter((tx) => {
     const q = searchQuery.toLowerCase().trim();
-    
-    // Search across contract serial number, voucher number, customer name (NP & EN),
-    // grandfather/father name, citizenship number, mobile phone number, items, address, verification hash
+    const qNormalized = normalizeDigits(q);
+    const qPhoneDigits = qNormalized.replace(/[\s\-+()]/g, '');
+    const txPhoneNormalized = normalizeDigits(tx.seller.mobileNumber || '').replace(/[\s\-+()]/g, '');
+    const txDateBSNormalized = normalizeDigits((tx.dateBS || '').toLowerCase());
+    const txDateAD = getTransactionDateAD(tx);
+
+    // Search across seller name (NP & EN), phone number, dates (BS & AD), serial, voucher, ID, items, address, hash
     const matchesSearch = !q || (
       (tx.contractSerialNumber && tx.contractSerialNumber.toLowerCase().includes(q)) ||
       (tx.voucherNumber && tx.voucherNumber.toLowerCase().includes(q)) ||
       (tx.seller.fullNameNepali && tx.seller.fullNameNepali.toLowerCase().includes(q)) ||
       (tx.seller.fullNameEnglish && tx.seller.fullNameEnglish.toLowerCase().includes(q)) ||
-      (tx.seller.idNumber && tx.seller.idNumber.toLowerCase().includes(q)) ||
-      (tx.seller.mobileNumber && tx.seller.mobileNumber.includes(q)) ||
+      (tx.seller.idNumber && normalizeDigits(tx.seller.idNumber.toLowerCase()).includes(qNormalized)) ||
+      (tx.seller.mobileNumber && (
+        tx.seller.mobileNumber.includes(q) ||
+        (qPhoneDigits.length > 0 && txPhoneNormalized.includes(qPhoneDigits))
+      )) ||
       (tx.seller.fatherName && tx.seller.fatherName.toLowerCase().includes(q)) ||
       (tx.seller.grandfatherName && tx.seller.grandfatherName.toLowerCase().includes(q)) ||
       (tx.seller.currentAddress && tx.seller.currentAddress.toLowerCase().includes(q)) ||
       (tx.seller.issuedDistrict && tx.seller.issuedDistrict.toLowerCase().includes(q)) ||
-      (tx.dateBS && tx.dateBS.includes(q)) ||
+      (tx.dateBS && (tx.dateBS.toLowerCase().includes(q) || txDateBSNormalized.includes(qNormalized))) ||
+      (tx.dateAD && tx.dateAD.toLowerCase().includes(q)) ||
+      (txDateAD && txDateAD.includes(qNormalized)) ||
       (tx.tamperVerificationHash && tx.tamperVerificationHash.toLowerCase().includes(q)) ||
       tx.items.some((item) => item.itemName.toLowerCase().includes(q) || item.purityLabel.toLowerCase().includes(q))
     );
@@ -103,10 +130,10 @@ export const PoliceAuditRegister: React.FC<PoliceAuditRegisterProps> = ({
       complianceFilter === 'all' ||
       (complianceFilter === 'verified' ? isFullyCompliant : !isFullyCompliant);
 
-    // Date range filtering (supports BS date strings e.g. 2083/01/15 or YYYY-MM-DD)
-    const matchesDate = 
-      (!startDate || (tx.dateBS >= startDate || tx.dateAD >= startDate)) &&
-      (!endDate || (tx.dateBS <= endDate || tx.dateAD <= endDate));
+    // Date range filtering against normalized AD YYYY-MM-DD dates
+    const matchesDate =
+      (!startDate || (txDateAD !== '' && txDateAD >= startDate)) &&
+      (!endDate || (txDateAD !== '' && txDateAD <= endDate));
 
     return matchesSearch && matchesMetal && matchesPayment && matchesDistrict && matchesCompliance && matchesDate;
   });
@@ -307,33 +334,12 @@ export const PoliceAuditRegister: React.FC<PoliceAuditRegisterProps> = ({
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              {/* Primary Universal Search Input */}
-              <div className="relative">
-                <Search className="w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="सिरीयल नं., नाम, नागरिकता, भौचर, मोवाइल वा गहना खोज्नुहोस्..."
-                  className="pl-9 pr-8 py-2 text-xs border border-neutral-300 rounded-lg focus:ring-2 focus:ring-amber-500 w-72 sm:w-80 bg-neutral-50 focus:bg-white transition-all shadow-2xs"
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 cursor-pointer"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-
               {/* Advanced Filter Toggle Button */}
               <button
                 type="button"
                 onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
                 className={`px-3 py-2 text-xs font-semibold rounded-lg border transition-colors flex items-center gap-1.5 cursor-pointer ${
-                  showAdvancedFilters || metalFilter !== 'all' || paymentFilter !== 'all' || districtFilter !== 'all' || complianceFilter !== 'all'
+                  showAdvancedFilters || metalFilter !== 'all' || paymentFilter !== 'all' || districtFilter !== 'all' || complianceFilter !== 'all' || Boolean(startDate || endDate)
                     ? 'bg-amber-50 border-amber-300 text-amber-900'
                     : 'bg-neutral-100 hover:bg-neutral-200 border-neutral-200 text-neutral-700'
                 }`}
@@ -361,6 +367,99 @@ export const PoliceAuditRegister: React.FC<PoliceAuditRegisterProps> = ({
               >
                 + नयाँ खरिद फाराम
               </button>
+            </div>
+          </div>
+
+          {/* Primary Search & Date Range Filter Bar (Always Visible) */}
+          <div className="pt-3 border-t border-neutral-100 flex flex-col lg:flex-row lg:items-end gap-3">
+            {/* Search by Seller Name, Phone, Date, Serial, ID */}
+            <div className="flex-1 min-w-0">
+              <label
+                htmlFor="audit-register-search"
+                className="block text-[11px] font-medium text-neutral-600 mb-1"
+              >
+                खोजी (Search by Seller Name, Phone Number, Date, Serial or ID)
+              </label>
+              <div className="relative">
+                <Search className="w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  id="audit-register-search"
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="बिक्रेताको नाम, फोन नं., मिति (२०८३/... वा 2026-...), सिरीयल वा नागरिकता नं. खोज्नुहोस्..."
+                  className="w-full pl-9 pr-8 py-2 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 bg-neutral-50 focus:bg-white transition-colors"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    aria-label="Clear search query"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-700 cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Date Range Filter (From - To) */}
+            <div className="flex flex-wrap sm:flex-nowrap items-end gap-2 shrink-0">
+              <div>
+                <label
+                  htmlFor="audit-date-from"
+                  className="block text-[11px] font-medium text-neutral-600 mb-1"
+                >
+                  देखि मिति (From Date)
+                </label>
+                <div className="relative">
+                  <Calendar className="w-3.5 h-3.5 text-neutral-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    id="audit-date-from"
+                    type="date"
+                    value={startDate}
+                    max={endDate || undefined}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="pl-8 pr-2.5 py-2 text-xs font-mono tabular-nums border border-neutral-300 rounded-lg bg-neutral-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="audit-date-to"
+                  className="block text-[11px] font-medium text-neutral-600 mb-1"
+                >
+                  सम्म मिति (To Date)
+                </label>
+                <div className="relative">
+                  <Calendar className="w-3.5 h-3.5 text-neutral-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    id="audit-date-to"
+                    type="date"
+                    value={endDate}
+                    min={startDate || undefined}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="pl-8 pr-2.5 py-2 text-xs font-mono tabular-nums border border-neutral-300 rounded-lg bg-neutral-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500"
+                  />
+                </div>
+              </div>
+
+              {(startDate || endDate || searchQuery) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setStartDate('');
+                    setEndDate('');
+                  }}
+                  className="px-2.5 py-2 text-xs font-medium text-neutral-600 hover:text-neutral-900 bg-neutral-100 hover:bg-neutral-200 border border-neutral-200 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                  title="खोज र मिति फिल्टर हटाउनुहोस् (Clear search & dates)"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  <span>Clear</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -458,7 +557,7 @@ export const PoliceAuditRegister: React.FC<PoliceAuditRegisterProps> = ({
               <p className="text-xs text-neutral-400 mt-1">
                 खोज शब्द परिवर्तन गर्नुहोस् वा नयाँ खरिद दर्ता गर्न "+ नयाँ खरिद फाराम" थिच्नुहोस्।
               </p>
-              {(searchQuery || metalFilter !== 'all' || paymentFilter !== 'all') && (
+              {(searchQuery || startDate || endDate || metalFilter !== 'all' || paymentFilter !== 'all' || districtFilter !== 'all' || complianceFilter !== 'all') && (
                 <button
                   type="button"
                   onClick={resetFilters}

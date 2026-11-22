@@ -74,7 +74,7 @@ export const BuyingForm: React.FC<BuyingFormProps> = ({
 }) => {
   const [activeStep, setActiveStep] = useState<number>(1);
 
-  // 1. Seller KYC State
+  // 1. Seller KYC State (starts completely clean)
   const [seller, setSeller] = useState<SellerKYC>({
     fullNameNepali: '',
     fullNameEnglish: '',
@@ -84,10 +84,10 @@ export const BuyingForm: React.FC<BuyingFormProps> = ({
     fatherOrHusbandName: '',
     idType: 'citizenship',
     idNumber: '',
-    issuedDistrict: 'काठमाडौं',
-    issuedDateBS: '२०७६/०५/१२',
-    province: 'बागमती प्रदेश (Bagmati)',
-    district: 'काठमाडौं',
+    issuedDistrict: '',
+    issuedDateBS: '',
+    province: '',
+    district: '',
     municipality: '',
     wardNo: '',
     tole: '',
@@ -99,39 +99,39 @@ export const BuyingForm: React.FC<BuyingFormProps> = ({
     idCardBackUrl: '',
   });
 
-  // 2. Items State
+  // 2. Items State (starts with one clean empty item row)
   const [items, setItems] = useState<MetalItem[]>([
     {
       id: 'item-1',
       metalType: 'gold',
       purity: '24K_chhapawal',
       purityLabel: 'छापावाल सुन (24K Gold)',
-      itemName: 'सुनको सिक्री (Gold Chain)',
+      itemName: '',
       quantity: 1,
-      grossWeightGrams: 11.66,
-      grossWeightTola: 1,
+      grossWeightGrams: 0,
+      grossWeightTola: 0,
       grossWeightLal: 0,
       stoneWeightGrams: 0,
       stoneDeductionGrams: 0,
-      waxDirtWeightGrams: 0.15,
-      jartiPercentage: 2,
-      jartiWeightGrams: 0.23,
-      netWeightGrams: 11.28,
-      netWeightTola: 0.97,
-      netWeightLal: 97,
+      waxDirtWeightGrams: 0,
+      jartiPercentage: 0,
+      jartiWeightGrams: 0,
+      netWeightGrams: 0,
+      netWeightTola: 0,
+      netWeightLal: 0,
       testingMethod: 'touchstone_acid',
       testedPurityPercentage: 99.5,
       ratePerTola: rates.chhapawalGoldPerTola,
       ratePerGram: Math.round(rates.chhapawalGoldPerTola / GRAMS_PER_TOLA),
-      totalItemValue: Math.round((11.28 / GRAMS_PER_TOLA) * rates.chhapawalGoldPerTola),
+      totalItemValue: 0,
       itemCondition: 'intact_wearable',
       notes: '',
     },
   ]);
 
   // Converter state for modal / quick calc
-  const [converterGrams, setConverterGrams] = useState<number>(11.664);
-  const [converterTola, setConverterTola] = useState<number>(1);
+  const [converterGrams, setConverterGrams] = useState<number>(0);
+  const [converterTola, setConverterTola] = useState<number>(0);
   const [converterAana, setConverterAana] = useState<number>(0);
   const [converterLal, setConverterLal] = useState<number>(0);
 
@@ -163,7 +163,7 @@ export const BuyingForm: React.FC<BuyingFormProps> = ({
     amount: grandTotalAmount,
     amountInWordsNepali: numberToNepaliWords(grandTotalAmount),
     amountInWordsEnglish: numberToEnglishWords(grandTotalAmount),
-    bankName: 'Nabil Bank Ltd.',
+    bankName: '',
     accountNumber: '',
     transactionReference: '',
     sellerPAN: '',
@@ -270,13 +270,32 @@ export const BuyingForm: React.FC<BuyingFormProps> = ({
       });
 
       if (extracted) {
-        // Determine ID type from document detection
-        let detectedType: 'citizenship' | 'national_id' | 'passport' | 'voter_id' = seller.idType;
-        if (extracted.idType && ['citizenship', 'national_id', 'passport', 'voter_id'].includes(extracted.idType)) {
-          detectedType = extracted.idType as any;
-        } else if (extracted.detectedDocType && ['citizenship', 'national_id', 'passport', 'voter_id'].includes(extracted.detectedDocType)) {
-          detectedType = extracted.detectedDocType as any;
-        }
+        const normalizeProvinceOption = (raw?: string): string => {
+          if (!raw) return '';
+          const v = raw.toLowerCase().trim();
+          if (v.includes('कोशी') || v.includes('koshi') || v.includes('province 1') || v.includes('प्रदेश १')) {
+            return 'कोशी प्रदेश (Koshi)';
+          }
+          if (v.includes('मधेश') || v.includes('madhesh') || v.includes('province 2') || v.includes('प्रदेश २')) {
+            return 'मधेश प्रदेश (Madhesh)';
+          }
+          if (v.includes('बागमती') || v.includes('bagmati') || v.includes('province 3') || v.includes('प्रदेश ३')) {
+            return 'बागमती प्रदेश (Bagmati)';
+          }
+          if (v.includes('गण्डकी') || v.includes('gandaki') || v.includes('province 4') || v.includes('प्रदेश ४')) {
+            return 'गण्डकी प्रदेश (Gandaki)';
+          }
+          if (v.includes('लुम्बिनी') || v.includes('lumbini') || v.includes('province 5') || v.includes('प्रदेश ५')) {
+            return 'लुम्बिनी प्रदेश (Lumbini)';
+          }
+          if (v.includes('कर्णाली') || v.includes('karnali') || v.includes('province 6') || v.includes('प्रदेश ६')) {
+            return 'कर्णाली प्रदेश (Karnali)';
+          }
+          if (v.includes('सुदूर') || v.includes('sudur') || v.includes('province 7') || v.includes('प्रदेश ७')) {
+            return 'सुदूरपश्चिम प्रदेश (Sudurpashchim)';
+          }
+          return raw;
+        };
 
         const docNames: Record<string, string> = {
           citizenship: 'नागरिकता (Citizenship)',
@@ -286,8 +305,19 @@ export const BuyingForm: React.FC<BuyingFormProps> = ({
           driving_license: 'सवारी चालक अनुमतिपत्र (Driving License)',
         };
 
-        const docTitle = docNames[detectedType] || docNames[extracted.detectedDocType || ''] || 'परिचयपत्र';
+        const matchedIdType: 'citizenship' | 'national_id' | 'passport' | 'voter_id' | undefined =
+          extracted.idType && ['citizenship', 'national_id', 'passport', 'voter_id'].includes(extracted.idType)
+            ? (extracted.idType as 'citizenship' | 'national_id' | 'passport' | 'voter_id')
+            : extracted.detectedDocType && ['citizenship', 'national_id', 'passport', 'voter_id'].includes(extracted.detectedDocType)
+              ? (extracted.detectedDocType as 'citizenship' | 'national_id' | 'passport' | 'voter_id')
+              : undefined;
+
+        const docTitle =
+          docNames[matchedIdType || ''] ||
+          docNames[extracted.detectedDocType || ''] ||
+          'परिचयपत्र';
         const sideNote = frontUrl && backUrl ? 'अगाडि र पछाडि दुवै भागबाट' : backUrl ? 'पछाडिको भागबाट' : 'अगाडिको भागबाट';
+        const normalizedProvince = normalizeProvinceOption(extracted.province);
 
         setSeller((prev) => ({
           ...prev,
@@ -297,18 +327,18 @@ export const BuyingForm: React.FC<BuyingFormProps> = ({
           fatherName: extracted.fatherName || prev.fatherName,
           spouseName: extracted.spouseName || prev.spouseName,
           fatherOrHusbandName: extracted.fatherOrHusbandName || extracted.fatherName || prev.fatherOrHusbandName,
-          idType: detectedType,
+          idType: matchedIdType || prev.idType,
           idNumber: extracted.idNumber || prev.idNumber,
           issuedDistrict: extracted.issuedDistrict || prev.issuedDistrict,
           issuedDateBS: extracted.issuedDateBS || prev.issuedDateBS,
-          province: extracted.province || prev.province,
+          province: normalizedProvince || prev.province,
           district: extracted.district || prev.district,
           municipality: extracted.municipality || prev.municipality,
           wardNo: extracted.wardNo || prev.wardNo,
           tole: extracted.tole || prev.tole,
           currentAddress: extracted.currentAddress || prev.currentAddress,
         }));
-        setOcrSuccessMessage(`${docTitle} ${sideNote} विवरण पहिचान भई भरियो (Auto-detected & merged successfully!)`);
+        setOcrSuccessMessage(`${docTitle} ${sideNote} विवरण पहिचान भई फाराममा स्वतः भरियो (Auto-filled successfully!)`);
       } else {
         setOcrErrorMessage('तस्बिरबाट परिचयपत्र स्पष्ट पढ्न सकिएन, कृपया स्पष्ट फोटो खिच्नुहोस् वा विवरण आफैं भर्नुहोस्।');
       }
@@ -636,6 +666,291 @@ export const BuyingForm: React.FC<BuyingFormProps> = ({
               </div>
             </div>
 
+            {/* Step 1 FIRST Section: परिचयपत्र फोटो (Click / Upload / Capture ID Photo to Auto-Fill Form) */}
+            <div className="border-2 border-blue-200 bg-blue-50/40 rounded-xl p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-blue-100 border border-blue-200 flex items-center justify-center text-blue-700 shrink-0">
+                    <ScanText className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-neutral-900">
+                      १. परिचयपत्र फोटो पहिचान (Click / Upload ID Photo to Auto-Fill Form)
+                    </h4>
+                    <p className="text-[11px] text-blue-800">
+                      नागरिकता, राष्ट्रिय परिचयपत्र (NID), राहदानी वा मतदाता परिचयपत्रको <strong>अगाडि (Front)</strong> र <strong>पछाडि (Back)</strong> फोटो क्लिक/अपलोड गर्दा फाराम स्वतः भरिन्छ।
+                    </p>
+                  </div>
+                </div>
+
+                {(seller.idCardFrontUrl || seller.idCardBackUrl) && (
+                  <button
+                    type="button"
+                    disabled={isScanningId}
+                    onClick={() => processIdOcr(seller.idCardFrontUrl, seller.idCardBackUrl)}
+                    className="px-3.5 py-2 text-[11px] font-semibold text-white bg-blue-700 hover:bg-blue-800 disabled:opacity-50 rounded-lg transition-colors inline-flex items-center justify-center gap-1.5 cursor-pointer shadow-xs shrink-0"
+                  >
+                    {isScanningId ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Sparkles className="w-3.5 h-3.5" />
+                    )}
+                    <span>
+                      {isScanningId
+                        ? 'फाराम भरिँदैछ...'
+                        : seller.idCardFrontUrl && seller.idCardBackUrl
+                          ? 'ID फोटोबाट फाराम स्वतः भर्नुहोस् (Auto-Fill Both Sides)'
+                          : 'ID फोटोबाट फाराम स्वतः भर्नुहोस् (Auto-Fill Form)'}
+                    </span>
+                  </button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-center">
+                {/* Front Side Card */}
+                <div className="border border-blue-200 bg-white rounded-lg p-3 flex flex-col justify-between min-h-[175px]">
+                  <div className="text-[11px] font-bold text-neutral-700 mb-1.5 flex items-center justify-between">
+                    <span>अगाडिको भाग (Front Side)</span>
+                    {seller.idCardFrontUrl && (
+                      <span className="text-[9px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
+                        फ्रेम क्रप भयो
+                      </span>
+                    )}
+                  </div>
+
+                  {seller.idCardFrontUrl ? (
+                    <div className="space-y-2 my-auto">
+                      <div className="relative inline-block group">
+                        <button
+                          type="button"
+                          disabled={isScanningId}
+                          onClick={() => processIdOcr(seller.idCardFrontUrl, seller.idCardBackUrl)}
+                          className="block rounded border-2 border-blue-400 hover:border-blue-600 shadow-xs overflow-hidden cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          title="फोटोमा क्लिक गरी फाराम स्वतः भर्नुहोस् (Click ID photo to auto-fill form)"
+                        >
+                          <img
+                            src={seller.idCardFrontUrl}
+                            alt="Front ID - Click to auto-fill form"
+                            className="w-48 h-28 object-contain bg-neutral-50 mx-auto transition-transform group-hover:scale-[1.02]"
+                            referrerPolicy="no-referrer"
+                          />
+                          {!isScanningId && (
+                            <span className="block bg-blue-50 text-blue-800 text-[9px] font-semibold py-0.5 px-2 border-t border-blue-200">
+                              क्लिक गरी फाराम स्वतः भर्नुहोस् (Click Photo to Auto-Fill)
+                            </span>
+                          )}
+                        </button>
+                        {isScanningId && (
+                          <div className="absolute inset-0 bg-blue-900/60 backdrop-blur-xs rounded flex flex-col items-center justify-center text-white p-1">
+                            <Loader2 className="w-4 h-4 animate-spin mb-0.5 text-amber-300" />
+                            <span className="text-[9px] font-bold">पढ्दैछ...</span>
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSeller({ ...seller, idCardFrontUrl: '' });
+                            setOcrSuccessMessage(null);
+                            setOcrErrorMessage(null);
+                          }}
+                          className="absolute -top-1.5 -right-1.5 bg-red-600 text-white rounded-full p-1 text-[9px] hover:bg-red-700 cursor-pointer shadow-xs"
+                          title="हटाउनुहोस्"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setCropModalState({
+                              isOpen: true,
+                              field: 'idCardFrontUrl',
+                              mode: 'crop',
+                              imageSrc: seller.idCardFrontUrl,
+                            })
+                          }
+                          className="px-2.5 py-1 text-[10px] font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded inline-flex items-center gap-1 cursor-pointer"
+                        >
+                          <Crop className="w-3 h-3" />
+                          <span>फ्रेम मिलाउनुहोस् (Crop)</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setCropModalState({
+                              isOpen: true,
+                              field: 'idCardFrontUrl',
+                              mode: 'camera',
+                            })
+                          }
+                          className="px-2 py-1 text-[10px] font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded inline-flex items-center gap-1 cursor-pointer"
+                          title="क्यामेरा फ्रेमबाट पुनः खिच्नुहोस्"
+                        >
+                          <Camera className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 my-auto">
+                      <label className="cursor-pointer block border-2 border-dashed border-blue-400 hover:border-blue-600 rounded-md p-2.5 bg-blue-50/25 transition-all hover:shadow-xs relative">
+                        <div className="w-10 h-6 border-2 border-blue-500/80 rounded-xs mx-auto mb-1 flex items-center justify-center bg-white/80">
+                          <Upload className="w-3.5 h-3.5 text-blue-600" />
+                        </div>
+                        <span className="text-[11px] font-semibold text-neutral-800 block">
+                          अगाडि फोटो थिच्नुहोस् / अपलोड गर्नुहोस्
+                        </span>
+                        <span className="text-[9px] text-neutral-500 block">
+                          फोटो छान्नासाथ स्वतः क्रप र फाराम भरिन्छ
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handlePhotoUpload(e, 'idCardFrontUrl')}
+                          className="hidden"
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setCropModalState({
+                            isOpen: true,
+                            field: 'idCardFrontUrl',
+                            mode: 'camera',
+                          })
+                        }
+                        className="w-full py-1.5 px-2 text-[10px] font-semibold text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-md flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                      >
+                        <Camera className="w-3.5 h-3.5 text-amber-700" />
+                        <span>क्यामेरा फ्रेमबाट खिच्नुहोस् (Camera Frame)</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Back Side Card */}
+                <div className="border border-blue-200 bg-white rounded-lg p-3 flex flex-col justify-between min-h-[175px]">
+                  <div className="text-[11px] font-bold text-neutral-700 mb-1.5 flex items-center justify-between">
+                    <span>पछाडिको भाग (Back Side)</span>
+                    {seller.idCardBackUrl && (
+                      <span className="text-[9px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
+                        फ्रेम क्रप भयो
+                      </span>
+                    )}
+                  </div>
+
+                  {seller.idCardBackUrl ? (
+                    <div className="space-y-2 my-auto">
+                      <div className="relative inline-block group">
+                        <button
+                          type="button"
+                          disabled={isScanningId}
+                          onClick={() => processIdOcr(seller.idCardFrontUrl, seller.idCardBackUrl)}
+                          className="block rounded border-2 border-blue-400 hover:border-blue-600 shadow-xs overflow-hidden cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          title="फोटोमा क्लिक गरी फाराम स्वतः भर्नुहोस् (Click ID photo to auto-fill form)"
+                        >
+                          <img
+                            src={seller.idCardBackUrl}
+                            alt="Back ID - Click to auto-fill form"
+                            className="w-48 h-28 object-contain bg-neutral-50 mx-auto transition-transform group-hover:scale-[1.02]"
+                            referrerPolicy="no-referrer"
+                          />
+                          {!isScanningId && (
+                            <span className="block bg-blue-50 text-blue-800 text-[9px] font-semibold py-0.5 px-2 border-t border-blue-200">
+                              क्लिक गरी फाराम स्वतः भर्नुहोस् (Click Photo to Auto-Fill)
+                            </span>
+                          )}
+                        </button>
+                        {isScanningId && (
+                          <div className="absolute inset-0 bg-blue-900/60 backdrop-blur-xs rounded flex flex-col items-center justify-center text-white p-1">
+                            <Loader2 className="w-4 h-4 animate-spin mb-0.5 text-amber-300" />
+                            <span className="text-[9px] font-bold">पढ्दैछ...</span>
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSeller({ ...seller, idCardBackUrl: '' });
+                            setOcrSuccessMessage(null);
+                            setOcrErrorMessage(null);
+                          }}
+                          className="absolute -top-1.5 -right-1.5 bg-red-600 text-white rounded-full p-1 text-[9px] hover:bg-red-700 cursor-pointer shadow-xs"
+                          title="हटाउनुहोस्"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setCropModalState({
+                              isOpen: true,
+                              field: 'idCardBackUrl',
+                              mode: 'crop',
+                              imageSrc: seller.idCardBackUrl,
+                            })
+                          }
+                          className="px-2.5 py-1 text-[10px] font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded inline-flex items-center gap-1 cursor-pointer"
+                        >
+                          <Crop className="w-3 h-3" />
+                          <span>फ्रेम मिलाउनुहोस् (Crop)</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setCropModalState({
+                              isOpen: true,
+                              field: 'idCardBackUrl',
+                              mode: 'camera',
+                            })
+                          }
+                          className="px-2 py-1 text-[10px] font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded inline-flex items-center gap-1 cursor-pointer"
+                          title="क्यामेरा फ्रेमबाट पुनः खिच्नुहोस्"
+                        >
+                          <Camera className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 my-auto">
+                      <label className="cursor-pointer block border-2 border-dashed border-blue-400 hover:border-blue-600 rounded-md p-2.5 bg-blue-50/25 transition-all hover:shadow-xs relative">
+                        <div className="w-10 h-6 border-2 border-blue-500/80 rounded-xs mx-auto mb-1 flex items-center justify-center bg-white/80">
+                          <Upload className="w-3.5 h-3.5 text-blue-600" />
+                        </div>
+                        <span className="text-[11px] font-semibold text-neutral-800 block">
+                          पछाडि फोटो थिच्नुहोस् / अपलोड गर्नुहोस्
+                        </span>
+                        <span className="text-[9px] text-neutral-500 block">
+                          ठेगाना र जारी मिति स्वतः पहिचान हुन्छ
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handlePhotoUpload(e, 'idCardBackUrl')}
+                          className="hidden"
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setCropModalState({
+                            isOpen: true,
+                            field: 'idCardBackUrl',
+                            mode: 'camera',
+                          })
+                        }
+                        className="w-full py-1.5 px-2 text-[10px] font-semibold text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-md flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                      >
+                        <Camera className="w-3.5 h-3.5 text-amber-700" />
+                        <span>क्यामेरा फ्रेमबाट खिच्नुहोस् (Camera Frame)</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
             {/* Auto-OCR Status Notification */}
             {isScanningId && (
               <div className="p-3.5 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-3 text-blue-900 animate-pulse">
@@ -904,6 +1219,7 @@ export const BuyingForm: React.FC<BuyingFormProps> = ({
                         onChange={(e) => setSeller({ ...seller, province: e.target.value })}
                         className="w-full px-2.5 py-1.5 text-xs border border-neutral-300 rounded-md bg-white"
                       >
+                        <option value="">प्रदेश छान्नुहोस्...</option>
                         <option value="कोशी प्रदेश (Koshi)">कोशी प्रदेश</option>
                         <option value="मधेश प्रदेश (Madhesh)">मधेश प्रदेश</option>
                         <option value="बागमती प्रदेश (Bagmati)">बागमती प्रदेश</option>
@@ -963,7 +1279,7 @@ export const BuyingForm: React.FC<BuyingFormProps> = ({
                 </div>
               </div>
 
-              {/* Right Column: Photo & ID Document Upload */}
+              {/* Right Column: Seller Portrait Photo */}
               <div className="space-y-4">
                 <div className="border border-neutral-200 rounded-xl p-4 bg-neutral-50/70 text-center">
                   <h4 className="text-xs font-bold text-neutral-900 mb-2 flex items-center justify-center gap-1.5">
@@ -1001,255 +1317,6 @@ export const BuyingForm: React.FC<BuyingFormProps> = ({
                         className="hidden"
                       />
                     </label>
-                  )}
-                </div>
-
-                <div className="border-2 border-blue-200 bg-blue-50/40 rounded-xl p-4 text-center">
-                  <div className="flex items-center justify-center gap-1.5 mb-1.5">
-                    <ScanText className="w-4 h-4 text-blue-700" />
-                    <h4 className="text-xs font-bold text-neutral-900">
-                      परिचयपत्र फोटो (Auto AI Multi-ID Reader)
-                    </h4>
-                  </div>
-                  <p className="text-[10px] text-blue-800 font-medium mb-3">
-                    नागरिकता, राष्ट्रिय परिचयपत्र (NID), राहदानी वा मतदाता परिचयपत्रको <strong>अगाडि (Front)</strong> र <strong>पछाडि (Back)</strong> दुवै तस्बिरबाट ठेगाना र विवरण स्वतः पहिचान हुन्छ
-                  </p>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {/* Front Side Card */}
-                    <div className="border border-blue-200 bg-white rounded-lg p-2.5 flex flex-col justify-between min-h-[185px]">
-                      <div className="text-[11px] font-bold text-neutral-700 mb-1 flex items-center justify-between">
-                        <span>अगाडिको भाग (Front Side)</span>
-                        {seller.idCardFrontUrl && (
-                          <span className="text-[9px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
-                            फ्रेम क्रप भयो
-                          </span>
-                        )}
-                      </div>
-
-                      {seller.idCardFrontUrl ? (
-                        <div className="space-y-2 my-auto">
-                          <div className="relative inline-block">
-                            <img
-                              src={seller.idCardFrontUrl}
-                              alt="Front ID"
-                              className="w-40 h-24 object-contain bg-neutral-50 rounded border-2 border-blue-400 shadow-xs mx-auto"
-                              referrerPolicy="no-referrer"
-                            />
-                            {isScanningId && (
-                              <div className="absolute inset-0 bg-blue-900/60 backdrop-blur-xs rounded flex flex-col items-center justify-center text-white p-1">
-                                <Loader2 className="w-4 h-4 animate-spin mb-0.5 text-amber-300" />
-                                <span className="text-[9px] font-bold">पढ्दैछ...</span>
-                              </div>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSeller({ ...seller, idCardFrontUrl: '' });
-                                setOcrSuccessMessage(null);
-                                setOcrErrorMessage(null);
-                              }}
-                              className="absolute -top-1.5 -right-1.5 bg-red-600 text-white rounded-full p-1 text-[9px] hover:bg-red-700 cursor-pointer shadow-xs"
-                              title="हटाउनुहोस्"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                          <div className="flex items-center justify-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setCropModalState({
-                                  isOpen: true,
-                                  field: 'idCardFrontUrl',
-                                  mode: 'crop',
-                                  imageSrc: seller.idCardFrontUrl,
-                                })
-                              }
-                              className="px-2.5 py-1 text-[10px] font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded inline-flex items-center gap-1 cursor-pointer"
-                            >
-                              <Crop className="w-3 h-3" />
-                              <span>फ्रेम मिलाउनुहोस् (Crop)</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setCropModalState({
-                                  isOpen: true,
-                                  field: 'idCardFrontUrl',
-                                  mode: 'camera',
-                                })
-                              }
-                              className="px-2 py-1 text-[10px] font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded inline-flex items-center gap-1 cursor-pointer"
-                              title="क्यामेरा फ्रेमबाट पुनः खिच्नुहोस्"
-                            >
-                              <Camera className="w-3 h-3" />
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="space-y-2 my-auto">
-                          <label className="cursor-pointer block border-2 border-dashed border-blue-400 hover:border-blue-600 rounded-md p-2.5 bg-blue-50/25 transition-all hover:shadow-xs relative">
-                            <div className="w-10 h-6 border-2 border-blue-500/80 rounded-xs mx-auto mb-1 flex items-center justify-center bg-white/80">
-                              <Upload className="w-3.5 h-3.5 text-blue-600" />
-                            </div>
-                            <span className="text-[11px] font-semibold text-neutral-800 block">
-                              अगाडि फोटो अपलोड (Auto Frame)
-                            </span>
-                            <span className="text-[9px] text-neutral-500 block">
-                              आयताकार फ्रेम भित्रको भाग मात्र प्रिन्ट/PDF हुन्छ
-                            </span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={(e) => handlePhotoUpload(e, 'idCardFrontUrl')}
-                              className="hidden"
-                            />
-                          </label>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setCropModalState({
-                                isOpen: true,
-                                field: 'idCardFrontUrl',
-                                mode: 'camera',
-                              })
-                            }
-                            className="w-full py-1.5 px-2 text-[10px] font-semibold text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-md flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
-                          >
-                            <Camera className="w-3.5 h-3.5 text-amber-700" />
-                            <span>क्यामेरा फ्रेमबाट खिच्नुहोस् (Camera Frame)</span>
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Back Side Card */}
-                    <div className="border border-blue-200 bg-white rounded-lg p-2.5 flex flex-col justify-between min-h-[185px]">
-                      <div className="text-[11px] font-bold text-neutral-700 mb-1 flex items-center justify-between">
-                        <span>पछाडिको भाग (Back Side)</span>
-                        {seller.idCardBackUrl && (
-                          <span className="text-[9px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
-                            फ्रेम क्रप भयो
-                          </span>
-                        )}
-                      </div>
-
-                      {seller.idCardBackUrl ? (
-                        <div className="space-y-2 my-auto">
-                          <div className="relative inline-block">
-                            <img
-                              src={seller.idCardBackUrl}
-                              alt="Back ID"
-                              className="w-40 h-24 object-contain bg-neutral-50 rounded border-2 border-blue-400 shadow-xs mx-auto"
-                              referrerPolicy="no-referrer"
-                            />
-                            {isScanningId && (
-                              <div className="absolute inset-0 bg-blue-900/60 backdrop-blur-xs rounded flex flex-col items-center justify-center text-white p-1">
-                                <Loader2 className="w-4 h-4 animate-spin mb-0.5 text-amber-300" />
-                                <span className="text-[9px] font-bold">पढ्दैछ...</span>
-                              </div>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSeller({ ...seller, idCardBackUrl: '' });
-                                setOcrSuccessMessage(null);
-                                setOcrErrorMessage(null);
-                              }}
-                              className="absolute -top-1.5 -right-1.5 bg-red-600 text-white rounded-full p-1 text-[9px] hover:bg-red-700 cursor-pointer shadow-xs"
-                              title="हटाउनुहोस्"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                          <div className="flex items-center justify-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setCropModalState({
-                                  isOpen: true,
-                                  field: 'idCardBackUrl',
-                                  mode: 'crop',
-                                  imageSrc: seller.idCardBackUrl,
-                                })
-                              }
-                              className="px-2.5 py-1 text-[10px] font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded inline-flex items-center gap-1 cursor-pointer"
-                            >
-                              <Crop className="w-3 h-3" />
-                              <span>फ्रेम मिलाउनुहोस् (Crop)</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setCropModalState({
-                                  isOpen: true,
-                                  field: 'idCardBackUrl',
-                                  mode: 'camera',
-                                })
-                              }
-                              className="px-2 py-1 text-[10px] font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded inline-flex items-center gap-1 cursor-pointer"
-                              title="क्यामेरा फ्रेमबाट पुनः खिच्नुहोस्"
-                            >
-                              <Camera className="w-3 h-3" />
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="space-y-2 my-auto">
-                          <label className="cursor-pointer block border-2 border-dashed border-blue-400 hover:border-blue-600 rounded-md p-2.5 bg-blue-50/25 transition-all hover:shadow-xs relative">
-                            <div className="w-10 h-6 border-2 border-blue-500/80 rounded-xs mx-auto mb-1 flex items-center justify-center bg-white/80">
-                              <Upload className="w-3.5 h-3.5 text-blue-600" />
-                            </div>
-                            <span className="text-[11px] font-semibold text-neutral-800 block">
-                              पछाडि फोटो अपलोड (Auto Frame)
-                            </span>
-                            <span className="text-[9px] text-neutral-500 block">
-                              आयताकार फ्रेम भित्रको भाग मात्र प्रिन्ट/PDF हुन्छ
-                            </span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={(e) => handlePhotoUpload(e, 'idCardBackUrl')}
-                              className="hidden"
-                            />
-                          </label>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setCropModalState({
-                                isOpen: true,
-                                field: 'idCardBackUrl',
-                                mode: 'camera',
-                              })
-                            }
-                            className="w-full py-1.5 px-2 text-[10px] font-semibold text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-md flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
-                          >
-                            <Camera className="w-3.5 h-3.5 text-amber-700" />
-                            <span>क्यामेरा फ्रेमबाट खिच्नुहोस् (Camera Frame)</span>
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Rescan / Re-read combined button */}
-                  {(seller.idCardFrontUrl || seller.idCardBackUrl) && (
-                    <div className="mt-3 flex justify-center">
-                      <button
-                        type="button"
-                        disabled={isScanningId}
-                        onClick={() => processIdOcr(seller.idCardFrontUrl, seller.idCardBackUrl)}
-                        className="px-3.5 py-1.5 text-[11px] font-semibold text-blue-700 bg-blue-100 hover:bg-blue-200 disabled:opacity-50 rounded-lg transition-colors inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
-                      >
-                        <ScanText className="w-3.5 h-3.5" />
-                        <span>
-                          {seller.idCardFrontUrl && seller.idCardBackUrl 
-                            ? 'दुवै भाग पुनः पहिचान गर्नुहोस् (Re-read Both Sides)' 
-                            : 'पुनः पहिचान गर्नुहोस् (Re-read ID)'}
-                        </span>
-                      </button>
-                    </div>
                   )}
                 </div>
               </div>

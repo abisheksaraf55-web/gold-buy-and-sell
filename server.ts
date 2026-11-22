@@ -47,7 +47,14 @@ app.post('/api/ocr-id', async (req, res) => {
   }
 
   try {
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = new GoogleGenAI({
+      apiKey,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        },
+      },
+    });
 
     // Prepare multimodal parts for Gemini
     const parts: any[] = [];

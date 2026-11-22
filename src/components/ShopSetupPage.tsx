@@ -1,14 +1,27 @@
 import React, { useState } from 'react';
 import { User } from 'firebase/auth';
 import { ShopDetails } from '../types/bullion';
-import { DEFAULT_SHOP_DETAILS } from '../utils/storage';
-import { Building2, CheckCircle2, LogOut, Upload, ShieldCheck, ArrowRight, Loader2 } from 'lucide-react';
+import {
+  Building2,
+  LogOut,
+  ShieldCheck,
+  ArrowRight,
+  Menu,
+  X,
+  LayoutDashboard,
+  PlusCircle,
+  FileText,
+  ChevronRight,
+  TrendingUp,
+} from 'lucide-react';
+import { ShopSettingsModal } from './ShopSettingsModal';
 import sealBadge from '../assets/images/nepal_bullion_seal_1790317148844.jpg';
 
 interface ShopSetupPageProps {
   shop: ShopDetails;
   user: User;
   onCompleteSetup: (updatedShop: ShopDetails) => Promise<void> | void;
+  onNavigate?: (targetView: 'dashboard' | 'form' | 'register', updatedShop: ShopDetails) => Promise<void> | void;
   onSignOut: () => void;
 }
 
@@ -16,37 +29,34 @@ export const ShopSetupPage: React.FC<ShopSetupPageProps> = ({
   shop,
   user,
   onCompleteSetup,
+  onNavigate,
   onSignOut,
 }) => {
   const [formData, setFormData] = useState<ShopDetails>(() => ({
     ...shop,
-    email:
-      !shop.email || shop.email === DEFAULT_SHOP_DETAILS.email
-        ? user.email || shop.email
-        : shop.email,
+    email: shop.email || user.email || '',
   }));
   const [isSaving, setIsSaving] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isShopModalOpen, setIsShopModalOpen] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleNavigateFromMenu = async (targetView: 'dashboard' | 'form' | 'register') => {
+    setIsMenuOpen(false);
     setIsSaving(true);
     try {
-      await onCompleteSetup({
+      const preparedShop: ShopDetails = {
         ...formData,
+        nameNepali: formData.nameNepali || 'मेरो सुनचाँदी पसल',
+        nameEnglish: formData.nameEnglish || 'My Gold & Silver Jewellers',
+        proprietorName: formData.proprietorName || user.displayName || '',
+        email: formData.email || user.email || '',
         isSetupCompleted: true,
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleSkip = async () => {
-    setIsSaving(true);
-    try {
-      await onCompleteSetup({
-        ...formData,
-        isSetupCompleted: true,
-      });
+      };
+      if (onNavigate) {
+        await onNavigate(targetView, preparedShop);
+      } else {
+        await onCompleteSetup(preparedShop);
+      }
     } finally {
       setIsSaving(false);
     }
@@ -58,6 +68,17 @@ export const ShopSetupPage: React.FC<ShopSetupPageProps> = ({
       <header className="bg-neutral-900 text-white border-b border-neutral-800 w-full">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
+            <button
+              type="button"
+              onClick={() => setIsMenuOpen(true)}
+              className="inline-flex items-center gap-1.5 px-2.5 py-2 text-xs font-semibold text-white bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 rounded-lg transition-colors cursor-pointer shrink-0 whitespace-nowrap"
+              title="मेनु खोल्नुहोस् (Open Side Menu)"
+              aria-label="Open Menu"
+            >
+              <Menu className="w-4 h-4 text-amber-400 shrink-0" />
+              <span>Menu</span>
+            </button>
+
             <img
               src={sealBadge}
               alt="Nepal Bullion Legal Seal"
@@ -69,7 +90,7 @@ export const ShopSetupPage: React.FC<ShopSetupPageProps> = ({
                 नेपाल सुनचाँदी कानुनी खरिद प्रणाली
               </span>
               <span className="text-[11px] text-amber-400 block truncate">
-                प्रारम्भिक पसल सेटअप (One-Time Shop Setup)
+                {formData.nameNepali || 'गृह पृष्ठ (Home Landing)'}
               </span>
             </div>
           </div>
@@ -99,42 +120,223 @@ export const ShopSetupPage: React.FC<ShopSetupPageProps> = ({
         </div>
       </header>
 
+      {/* Slide-out Side Menu Drawer */}
+      {isMenuOpen && (
+        <div className="fixed inset-0 z-50 flex">
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
+            onClick={() => setIsMenuOpen(false)}
+          />
+          <div className="relative w-72 max-w-[85vw] bg-neutral-900 text-white h-full shadow-2xl flex flex-col z-10 border-r border-neutral-800">
+            <div className="p-4 border-b border-neutral-800 flex items-center justify-between">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <img
+                  src={sealBadge}
+                  alt="Seal"
+                  className="w-8 h-8 rounded-full border border-amber-500/50 object-contain bg-neutral-800 shrink-0"
+                />
+                <div className="min-w-0">
+                  <h2 className="text-xs font-bold font-serif text-white tracking-wide">
+                    मुख्य मेनु (Side Menu)
+                  </h2>
+                  <p className="text-[10px] text-amber-400 truncate">
+                    {formData.nameNepali || 'प्रारम्भिक सेटअप'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsMenuOpen(false)}
+                className="p-1.5 text-neutral-400 hover:text-white rounded-lg hover:bg-neutral-800 transition-colors cursor-pointer"
+                aria-label="Close Menu"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-4 flex-1 overflow-y-auto space-y-6 text-xs">
+              <div className="space-y-1.5">
+                <div className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider px-2">
+                  कार्यक्षेत्र (Workspace)
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    setIsShopModalOpen(true);
+                  }}
+                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Building2 className="w-4 h-4 text-amber-400" />
+                    <span>खाता / पसल सेटअप (Setup Shop)</span>
+                  </div>
+                  <ChevronRight className="w-3.5 h-3.5 opacity-60" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleNavigateFromMenu('form')}
+                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <PlusCircle className="w-4 h-4 text-amber-400" />
+                    <span>नयाँ खरिद फाराम (Buy Form)</span>
+                  </div>
+                  <ChevronRight className="w-3.5 h-3.5 opacity-60" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleNavigateFromMenu('dashboard')}
+                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <LayoutDashboard className="w-4 h-4 text-amber-400" />
+                    <span>दैनिक ड्यासबोर्ड (Dashboard)</span>
+                  </div>
+                  <ChevronRight className="w-3.5 h-3.5 opacity-60" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleNavigateFromMenu('register')}
+                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <FileText className="w-4 h-4 text-amber-400" />
+                    <span>खरिद डेटा हेर्नुहोस् (View Entries)</span>
+                  </div>
+                  <ChevronRight className="w-3.5 h-3.5 opacity-60" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-neutral-800 text-[11px] text-neutral-400 space-y-3">
+              <div className="flex items-center gap-2.5">
+                {user.photoURL ? (
+                  <img
+                    src={user.photoURL}
+                    alt={user.displayName || 'Account'}
+                    className="w-8 h-8 rounded-full border border-neutral-700 object-cover shrink-0"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-amber-600 text-white font-bold flex items-center justify-center text-xs shrink-0">
+                    {(user.displayName || user.email || 'U').charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold text-white truncate">
+                    {user.displayName || 'अधिकृत प्रयोगकर्ता'}
+                  </p>
+                  <p className="text-[10px] text-neutral-400 truncate">
+                    {user.email}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  onSignOut();
+                }}
+                className="w-full py-2 px-3 rounded-lg bg-neutral-800 hover:bg-red-950/70 hover:text-red-200 border border-neutral-700 hover:border-red-800/70 text-neutral-200 text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>लगआउट गर्नुहोस् (Sign Out)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main Content */}
-      <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-10">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Left Context & Guidance Column */}
-          <aside className="lg:col-span-4 space-y-6">
+      <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12">
+        <div className="space-y-6">
+          <aside className="space-y-6 bg-white border border-neutral-200 rounded-2xl p-6 sm:p-8 shadow-xs">
             <div className="space-y-2.5">
               <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-800">
                 <Building2 className="w-4 h-4 text-amber-700" />
-                <span>पहिलो लगइन सेटअप (Step 1 of 1)</span>
+                <span>नेपाल सुनचाँदी कानुनी खरिद प्रणाली (Home)</span>
               </div>
               <h1 className="text-2xl font-bold tracking-tight text-neutral-900 font-serif text-balance">
-                तपाईंको सुनचाँदी पसलको आधिकारिक विवरण राख्नुहोस्
+                {formData.nameNepali || 'तपाईंको सुनचाँदी कारोबार व्यवस्थापन'}
               </h1>
               <p className="text-xs sm:text-sm text-neutral-600 leading-relaxed">
-                यो एकपटक मात्र भरिने सेटअप हो। यहाँ राखिएका पसलको नाम, प्यान नं., ठेगाना र रबर छाप प्रिन्ट हुने सबै कानुनी भरपाई तथा PDF कागजातको शीर्षमा स्वतः देखापर्नेछ।
+                नयाँ सुनचाँदी खरिद फाराम प्रविष्ट गर्न वा आजको कुल सुन/चाँदी खरिद र प्रवृत्ति चार्ट सहितको ड्यासबोर्ड हेर्न तलको विकल्प छान्नुहोस्। पसल प्रोफाइल माथिको मेनु वा तलको सेटअप बटनबाट सम्पादन गर्न सकिन्छ।
               </p>
             </div>
 
-            <div className="pt-4 border-t border-neutral-200 space-y-3 text-xs text-neutral-700">
-              <div className="flex items-start gap-2.5">
-                <span className="font-mono font-semibold text-amber-700 tabular-nums">01.</span>
-                <p className="leading-relaxed">
-                  पसलको नेपाली तथा अंग्रेजी नाम र स्थायी लेखा नम्बर (PAN/VAT) प्रविष्ट गर्नुहोस्।
-                </p>
+            {/* Home Landing Quick Actions */}
+            <div className="pt-4 border-t border-neutral-200 space-y-3">
+              <div className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">
+                मुख्य कार्यहरू (Home Landing Actions)
               </div>
-              <div className="flex items-start gap-2.5">
-                <span className="font-mono font-semibold text-amber-700 tabular-nums">02.</span>
-                <p className="leading-relaxed">
-                  सञ्चालकको नाम, सम्पर्क नम्बर र ठेगाना अद्यावधिक गर्नुहोस्।
-                </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  disabled={isSaving}
+                  onClick={() => handleNavigateFromMenu('form')}
+                  className="w-full px-4 py-3.5 text-left bg-amber-600 hover:bg-amber-700 disabled:opacity-60 text-white rounded-xl transition-colors flex items-center justify-between gap-3 cursor-pointer shadow-xs"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <PlusCircle className="w-5 h-5 text-white shrink-0" />
+                    <div className="min-w-0">
+                      <span className="block text-xs sm:text-sm font-bold truncate">
+                        Create a New Buying Form
+                      </span>
+                      <span className="block text-[11px] text-amber-100 truncate">
+                        नयाँ सुनचाँदी खरिद फाराम खोल्नुहोस्
+                      </span>
+                    </div>
+                  </div>
+                  <ArrowRight className="w-4 h-4 shrink-0" />
+                </button>
+
+                <button
+                  type="button"
+                  disabled={isSaving}
+                  onClick={() => handleNavigateFromMenu('dashboard')}
+                  className="w-full px-4 py-3.5 text-left bg-neutral-900 hover:bg-neutral-800 disabled:opacity-60 text-white rounded-xl transition-colors flex items-center justify-between gap-3 cursor-pointer shadow-xs"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <TrendingUp className="w-5 h-5 text-amber-400 shrink-0" />
+                    <div className="min-w-0">
+                      <span className="block text-xs sm:text-sm font-bold truncate">
+                        View Dashboard with Activity Trends Chart
+                      </span>
+                      <span className="block text-[11px] text-neutral-300 truncate">
+                        दैनिक खरिद सारांश र प्रवृत्ति चार्ट हेर्नुहोस्
+                      </span>
+                    </div>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-amber-400 shrink-0" />
+                </button>
               </div>
-              <div className="flex items-start gap-2.5">
-                <span className="font-mono font-semibold text-amber-700 tabular-nums">03.</span>
-                <p className="leading-relaxed">
-                  पसलको रबर छाप र लोगो अपलोड गरी प्रणालीमा प्रवेश गर्नुहोस् (पछि मेनुबाट पनि सम्पादन गर्न सकिन्छ)।
-                </p>
+
+              <div className="flex flex-wrap items-center gap-2.5 pt-1">
+                <button
+                  type="button"
+                  disabled={isSaving}
+                  onClick={() => handleNavigateFromMenu('register')}
+                  className="px-3.5 py-2 text-xs font-medium text-neutral-800 bg-neutral-100 hover:bg-neutral-200 border border-neutral-300 rounded-lg transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  <FileText className="w-3.5 h-3.5 text-amber-600" />
+                  <span>View Saved Entries (खरिद डेटा)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsShopModalOpen(true)}
+                  className="px-3.5 py-2 text-xs font-medium text-neutral-800 bg-neutral-100 hover:bg-neutral-200 border border-neutral-300 rounded-lg transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Building2 className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Setup Account / Shop Profile</span>
+                </button>
               </div>
             </div>
 
@@ -143,301 +345,18 @@ export const ShopSetupPage: React.FC<ShopSetupPageProps> = ({
               <span>Cloud Firestore र लोकल स्टोरेजमा सुरक्षित रूपमा सेभ हुन्छ</span>
             </div>
           </aside>
-
-          {/* Right Setup Form Card */}
-          <section className="lg:col-span-8 bg-white border border-neutral-200 rounded-2xl p-6 sm:p-8 shadow-xs">
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-neutral-800 mb-1">
-                    पसलको नाम (नेपालीमा) *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.nameNepali}
-                    onChange={(e) => setFormData({ ...formData, nameNepali: e.target.value })}
-                    className="w-full px-3 py-2 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-600"
-                    placeholder="श्री अन्नपूर्ण सुनचाँदी गहना मन्दिर प्रा.लि."
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-neutral-800 mb-1">
-                    Shop Name (In English) *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.nameEnglish}
-                    onChange={(e) => setFormData({ ...formData, nameEnglish: e.target.value })}
-                    className="w-full px-3 py-2 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-600"
-                    placeholder="Shree Annapurna Gold & Silver Jewellers"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-neutral-800 mb-1">
-                    प्रोपाइटर / सञ्चालकको नाम *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.proprietorName}
-                    onChange={(e) => setFormData({ ...formData, proprietorName: e.target.value })}
-                    className="w-full px-3 py-2 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-600"
-                    placeholder="रमेश कुमार शाक्य"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-neutral-800 mb-1">
-                    प्यान / भ्याट नं. (PAN / VAT No.) *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.panVatNumber}
-                    onChange={(e) => setFormData({ ...formData, panVatNumber: e.target.value })}
-                    className="w-full px-3 py-2 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-600 tabular-nums"
-                    placeholder="601284912"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-neutral-800 mb-1">
-                    व्यवसाय दर्ता नं. (Business Reg. No.)
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.businessRegNumber}
-                    onChange={(e) => setFormData({ ...formData, businessRegNumber: e.target.value })}
-                    className="w-full px-3 py-2 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-600 tabular-nums"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-neutral-800 mb-1">
-                    महासंघ सदस्यता नं. (FENEGOSIDA No.)
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.fenegosidaMembershipNo}
-                    onChange={(e) =>
-                      setFormData({ ...formData, fenegosidaMembershipNo: e.target.value })
-                    }
-                    className="w-full px-3 py-2 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-600 tabular-nums"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-neutral-800 mb-1">
-                  पसलको पूरा ठेगाना (Address) *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  className="w-full px-3 py-2 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-600"
-                  placeholder="न्यूरोड, वडा नं. २२, काठमाडौं, नेपाल"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-neutral-800 mb-1">
-                    सम्पर्क फोन / मोवाइल *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full px-3 py-2 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-600 tabular-nums"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-neutral-800 mb-1">
-                    इमेल ठेगाना (Email)
-                  </label>
-                  <input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full px-3 py-2 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-600"
-                  />
-                </div>
-              </div>
-
-              {/* Official Stamp & Logo Upload */}
-              <div className="pt-4 border-t border-neutral-200 space-y-3">
-                <div>
-                  <h2 className="text-xs font-bold text-neutral-900">
-                    पसलको आधिकारिक छाप तथा लोगो (Official Stamp &amp; Logo - Optional)
-                  </h2>
-                  <p className="text-[11px] text-neutral-500 mt-0.5">
-                    प्रिन्ट र PDF भरपाईको मुहर स्थानमा पसलको रबर छाप स्वतः राखिन्छ।
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* Stamp Upload */}
-                  <div className="flex items-center gap-3 p-3 border border-neutral-200 rounded-xl bg-neutral-50/70">
-                    <div className="w-16 h-16 border border-neutral-300 rounded-lg bg-white flex items-center justify-center overflow-hidden shrink-0">
-                      {formData.stampSealUrl ? (
-                        <img
-                          src={formData.stampSealUrl}
-                          alt="Shop Stamp"
-                          className="w-full h-full object-contain p-1"
-                        />
-                      ) : (
-                        <span className="text-[10px] text-neutral-400 text-center px-1">
-                          छाप छैन
-                        </span>
-                      )}
-                    </div>
-                    <div className="space-y-1.5 min-w-0">
-                      <span className="block text-[11px] font-semibold text-neutral-800">
-                        पसलको रबर छाप (Stamp)
-                      </span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        id="setup-stamp-upload"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            const reader = new FileReader();
-                            reader.onload = (ev) => {
-                              setFormData((prev) => ({
-                                ...prev,
-                                stampSealUrl: ev.target?.result as string,
-                              }));
-                            };
-                            reader.readAsDataURL(file);
-                          }
-                        }}
-                      />
-                      <label
-                        htmlFor="setup-stamp-upload"
-                        className="px-2.5 py-1 text-[11px] font-medium bg-neutral-900 hover:bg-neutral-800 text-white rounded-md cursor-pointer inline-flex items-center gap-1"
-                      >
-                        <Upload className="w-3 h-3" />
-                        <span>छाप छान्नुहोस्</span>
-                      </label>
-                      {formData.stampSealUrl && (
-                        <button
-                          type="button"
-                          onClick={() => setFormData((prev) => ({ ...prev, stampSealUrl: '' }))}
-                          className="block text-[11px] text-red-600 hover:underline cursor-pointer"
-                        >
-                          हटाउनुहोस्
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Logo Upload */}
-                  <div className="flex items-center gap-3 p-3 border border-neutral-200 rounded-xl bg-neutral-50/70">
-                    <div className="w-16 h-16 border border-neutral-300 rounded-lg bg-white flex items-center justify-center overflow-hidden shrink-0">
-                      {formData.logoUrl ? (
-                        <img
-                          src={formData.logoUrl}
-                          alt="Shop Logo"
-                          className="w-full h-full object-contain p-1"
-                        />
-                      ) : (
-                        <span className="text-[10px] text-neutral-400 text-center px-1">
-                          लोगो छैन
-                        </span>
-                      )}
-                    </div>
-                    <div className="space-y-1.5 min-w-0">
-                      <span className="block text-[11px] font-semibold text-neutral-800">
-                        पसलको लोगो (Logo)
-                      </span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        id="setup-logo-upload"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            const reader = new FileReader();
-                            reader.onload = (ev) => {
-                              setFormData((prev) => ({
-                                ...prev,
-                                logoUrl: ev.target?.result as string,
-                              }));
-                            };
-                            reader.readAsDataURL(file);
-                          }
-                        }}
-                      />
-                      <label
-                        htmlFor="setup-logo-upload"
-                        className="px-2.5 py-1 text-[11px] font-medium bg-white hover:bg-neutral-100 text-neutral-800 border border-neutral-300 rounded-md cursor-pointer inline-flex items-center gap-1"
-                      >
-                        <Upload className="w-3 h-3" />
-                        <span>लोगो छान्नुहोस्</span>
-                      </label>
-                      {formData.logoUrl && (
-                        <button
-                          type="button"
-                          onClick={() => setFormData((prev) => ({ ...prev, logoUrl: '' }))}
-                          className="block text-[11px] text-red-600 hover:underline cursor-pointer"
-                        >
-                          हटाउनुहोस्
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="pt-4 border-t border-neutral-200 flex flex-wrap items-center justify-between gap-3">
-                <button
-                  type="button"
-                  disabled={isSaving}
-                  onClick={handleSkip}
-                  className="px-4 py-2 text-xs font-medium text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-colors cursor-pointer"
-                >
-                  अहिले स्किप गर्नुहोस् (Skip Setup)
-                </button>
-
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="px-6 py-2.5 text-xs sm:text-sm font-bold bg-amber-600 hover:bg-amber-700 disabled:opacity-60 text-white rounded-xl transition-colors flex items-center gap-2 cursor-pointer shadow-xs"
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>सुरक्षित हुँदैछ...</span>
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span>सेटअप पूरा गरी प्रणाली सुरु गर्नुहोस् (Save &amp; Continue)</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          </section>
         </div>
       </main>
+
+      <ShopSettingsModal
+        isOpen={isShopModalOpen}
+        onClose={() => setIsShopModalOpen(false)}
+        shop={formData}
+        onSave={async (updated) => {
+          setFormData(updated);
+          await onCompleteSetup(updated);
+        }}
+      />
     </div>
   );
 };

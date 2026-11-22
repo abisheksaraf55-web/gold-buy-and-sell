@@ -40,8 +40,8 @@
     display: block !important;
   }
 
-  /* Hide screen headers, modals, footers, buttons and other UI elements */
-  header, footer, nav, button, .print\:hidden, [role="dialog"] {
+  /* Hide screen headers, sidebars, modals, footers, buttons and other UI elements */
+  header, aside, footer, nav, button, .print\:hidden, [role="dialog"] {
     display: none !important;
   }
 

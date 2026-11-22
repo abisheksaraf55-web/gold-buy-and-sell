@@ -15,16 +15,18 @@ import {
 } from '../types/bullion';
 import { 
   getStoredTransactions, 
+  setStoredTransactions,
   saveTransaction as saveLocalTx, 
+  deleteTransaction as deleteLocalTx,
   getShopDetails, 
   saveShopDetails as saveLocalShop,
   getMarketRates,
   saveMarketRates as saveLocalRates,
 } from '../utils/storage';
 
-const TRANSACTIONS_COLLECTION = 'transactions';
-const SETTINGS_COLLECTION = 'shopDetails';
-const RATES_COLLECTION = 'marketRates';
+const TRANSACTIONS_SUBCOLLECTION = 'transactions';
+const SETTINGS_SUBCOLLECTION = 'shopDetails';
+const RATES_SUBCOLLECTION = 'marketRates';
 
 enum OperationType {
   CREATE = 'create',
@@ -52,6 +54,10 @@ interface FirestoreErrorInfo {
   };
 }
 
+function getActiveUid(): string | undefined {
+  return auth.currentUser?.uid || undefined;
+}
+
 function logFirestoreError(error: unknown, operationType: OperationType, path: string | null): void {
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
@@ -74,143 +80,164 @@ function logFirestoreError(error: unknown, operationType: OperationType, path: s
 }
 
 /**
- * Save transaction to both Cloud Firestore and local offline storage
+ * Save transaction to both user-scoped Cloud Firestore and local offline storage
  */
 export async function persistTransaction(tx: PurchaseTransaction): Promise<void> {
-  // Always update local cache instantly for zero latency
-  saveLocalTx(tx);
+  const uid = getActiveUid();
+  saveLocalTx(tx, uid);
 
+  if (!uid) return;
+  const path = `users/${uid}/${TRANSACTIONS_SUBCOLLECTION}/${tx.id}`;
   try {
-    const docRef = doc(db, TRANSACTIONS_COLLECTION, tx.id);
+    const docRef = doc(db, 'users', uid, TRANSACTIONS_SUBCOLLECTION, tx.id);
     await setDoc(docRef, tx);
   } catch (err) {
-    logFirestoreError(err, OperationType.WRITE, `${TRANSACTIONS_COLLECTION}/${tx.id}`);
+    logFirestoreError(err, OperationType.WRITE, path);
   }
 }
 
 /**
- * Delete transaction from both Cloud Firestore and local storage
+ * Delete transaction from both user-scoped Cloud Firestore and local storage
  */
 export async function removeTransaction(id: string): Promise<void> {
-  // Remove from local storage
-  const current = getStoredTransactions();
-  const filtered = current.filter((t: PurchaseTransaction) => t.id !== id);
-  localStorage.setItem('nepal_bullion_legal_transactions_v1', JSON.stringify(filtered));
+  const uid = getActiveUid();
+  deleteLocalTx(id, uid);
 
+  if (!uid) return;
+  const path = `users/${uid}/${TRANSACTIONS_SUBCOLLECTION}/${id}`;
   try {
-    const docRef = doc(db, TRANSACTIONS_COLLECTION, id);
+    const docRef = doc(db, 'users', uid, TRANSACTIONS_SUBCOLLECTION, id);
     await deleteDoc(docRef);
   } catch (err) {
-    logFirestoreError(err, OperationType.DELETE, `${TRANSACTIONS_COLLECTION}/${id}`);
+    logFirestoreError(err, OperationType.DELETE, path);
   }
 }
 
 /**
- * Fetch all transactions from Firestore; fallback to local storage
+ * Fetch all transactions for the current signed-in user from Firestore; fallback to local storage
  */
 export async function fetchTransactions(): Promise<PurchaseTransaction[]> {
+  const uid = getActiveUid();
+  if (!uid) return [];
+
+  const path = `users/${uid}/${TRANSACTIONS_SUBCOLLECTION}`;
   try {
-    const colRef = collection(db, TRANSACTIONS_COLLECTION);
+    const colRef = collection(db, 'users', uid, TRANSACTIONS_SUBCOLLECTION);
     const snap = await getDocs(colRef);
-    if (!snap.empty) {
-      const records: PurchaseTransaction[] = [];
-      snap.forEach((d) => {
-        records.push(d.data() as PurchaseTransaction);
-      });
-      // Sort newest first
-      records.sort((a, b) => (b.serialNo || 0) - (a.serialNo || 0));
-      localStorage.setItem('nepal_bullion_legal_transactions_v1', JSON.stringify(records));
-      return records;
-    }
+    const records: PurchaseTransaction[] = [];
+    snap.forEach((d) => {
+      records.push(d.data() as PurchaseTransaction);
+    });
+    records.sort((a, b) => (b.serialNo || 0) - (a.serialNo || 0));
+    setStoredTransactions(records, uid);
+    return records;
   } catch (err) {
-    logFirestoreError(err, OperationType.LIST, TRANSACTIONS_COLLECTION);
+    logFirestoreError(err, OperationType.LIST, path);
   }
-  return getStoredTransactions();
+  return getStoredTransactions(uid);
 }
 
 /**
- * Persist shop profile to Cloud Firestore and local storage
+ * Persist shop profile to user-scoped Cloud Firestore and local storage
  */
 export async function persistShopDetails(shop: ShopDetails): Promise<void> {
-  saveLocalShop(shop);
+  const uid = getActiveUid();
+  saveLocalShop(shop, uid);
+
+  if (!uid) return;
+  const path = `users/${uid}/${SETTINGS_SUBCOLLECTION}/profile`;
   try {
-    const docRef = doc(db, SETTINGS_COLLECTION, 'profile');
+    const docRef = doc(db, 'users', uid, SETTINGS_SUBCOLLECTION, 'profile');
     await setDoc(docRef, shop);
   } catch (err) {
-    logFirestoreError(err, OperationType.WRITE, `${SETTINGS_COLLECTION}/profile`);
+    logFirestoreError(err, OperationType.WRITE, path);
   }
 }
 
 /**
- * Fetch shop details from Firestore; fallback to local storage
+ * Fetch shop details for current signed-in user from Firestore; fallback to local storage
  */
 export async function fetchShopDetails(): Promise<ShopDetails> {
+  const uid = getActiveUid();
+  if (!uid) return getShopDetails();
+
+  const path = `users/${uid}/${SETTINGS_SUBCOLLECTION}/profile`;
   try {
-    const docRef = doc(db, SETTINGS_COLLECTION, 'profile');
+    const docRef = doc(db, 'users', uid, SETTINGS_SUBCOLLECTION, 'profile');
     const snap = await getDoc(docRef);
     if (snap.exists()) {
       const remote = snap.data() as ShopDetails;
-      saveLocalShop(remote);
+      saveLocalShop(remote, uid);
       return remote;
     }
   } catch (err) {
-    logFirestoreError(err, OperationType.GET, `${SETTINGS_COLLECTION}/profile`);
+    logFirestoreError(err, OperationType.GET, path);
   }
-  return getShopDetails();
+  return getShopDetails(uid);
 }
 
 /**
- * Persist bullion market rates
+ * Persist bullion market rates for current user
  */
 export async function persistMarketRates(rates: BullionMarketRates): Promise<void> {
-  saveLocalRates(rates);
+  const uid = getActiveUid();
+  saveLocalRates(rates, uid);
+
+  if (!uid) return;
+  const path = `users/${uid}/${RATES_SUBCOLLECTION}/current`;
   try {
-    const docRef = doc(db, RATES_COLLECTION, 'current');
+    const docRef = doc(db, 'users', uid, RATES_SUBCOLLECTION, 'current');
     await setDoc(docRef, rates);
   } catch (err) {
-    logFirestoreError(err, OperationType.WRITE, `${RATES_COLLECTION}/current`);
+    logFirestoreError(err, OperationType.WRITE, path);
   }
 }
 
 /**
- * Fetch bullion market rates from Firestore; fallback to local storage
+ * Fetch bullion market rates for current user from Firestore; fallback to local storage
  */
 export async function fetchMarketRates(): Promise<BullionMarketRates> {
+  const uid = getActiveUid();
+  if (!uid) return getMarketRates();
+
+  const path = `users/${uid}/${RATES_SUBCOLLECTION}/current`;
   try {
-    const docRef = doc(db, RATES_COLLECTION, 'current');
+    const docRef = doc(db, 'users', uid, RATES_SUBCOLLECTION, 'current');
     const snap = await getDoc(docRef);
     if (snap.exists()) {
       const remote = snap.data() as BullionMarketRates;
-      saveLocalRates(remote);
+      saveLocalRates(remote, uid);
       return remote;
     }
   } catch (err) {
-    logFirestoreError(err, OperationType.GET, `${RATES_COLLECTION}/current`);
+    logFirestoreError(err, OperationType.GET, path);
   }
-  return getMarketRates();
+  return getMarketRates(uid);
 }
 
 /**
- * Subscribe to realtime transactions updates if online
+ * Subscribe to realtime user-scoped transactions updates if online
  */
 export function subscribeToTransactions(onUpdate: (txs: PurchaseTransaction[]) => void): () => void {
+  const uid = getActiveUid();
+  if (!uid) return () => {};
+
+  const path = `users/${uid}/${TRANSACTIONS_SUBCOLLECTION}`;
   try {
-    const colRef = collection(db, TRANSACTIONS_COLLECTION);
+    const colRef = collection(db, 'users', uid, TRANSACTIONS_SUBCOLLECTION);
     return onSnapshot(
       colRef,
       (snapshot) => {
-        if (!snapshot.empty) {
-          const list: PurchaseTransaction[] = [];
-          snapshot.forEach((d) => {
-            list.push(d.data() as PurchaseTransaction);
-          });
-          list.sort((a, b) => (b.serialNo || 0) - (a.serialNo || 0));
-          localStorage.setItem('nepal_bullion_legal_transactions_v1', JSON.stringify(list));
-          onUpdate(list);
-        }
+        const list: PurchaseTransaction[] = [];
+        snapshot.forEach((d) => {
+          list.push(d.data() as PurchaseTransaction);
+        });
+        list.sort((a, b) => (b.serialNo || 0) - (a.serialNo || 0));
+        setStoredTransactions(list, uid);
+        onUpdate(list);
       },
       (err) => {
-        logFirestoreError(err, OperationType.LIST, TRANSACTIONS_COLLECTION);
+        logFirestoreError(err, OperationType.LIST, path);
       }
     );
   } catch {
