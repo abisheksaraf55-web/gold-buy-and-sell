@@ -58,7 +58,11 @@ export async function extractKycFromIdImage(
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       console.error('Backend OCR request failed:', response.status, errorData);
-      throw new Error(errorData.error || `Server responded with status ${response.status}`);
+      const safeMessage =
+        typeof errorData?.error === 'string' && !/\{|"code"|status\s+\d{3}/i.test(errorData.error)
+          ? errorData.error
+          : 'तस्बिरबाट परिचयपत्र पहिचान गर्न सकिएन। कृपया विवरण हातैले भर्नुहोस्।';
+      throw new Error(safeMessage);
     }
 
     const data: ExtractedIdData = await response.json();

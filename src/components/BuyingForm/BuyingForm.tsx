@@ -344,7 +344,13 @@ export const BuyingForm: React.FC<BuyingFormProps> = ({
       }
     } catch (err: any) {
       console.error('OCR detection error:', err);
-      setOcrErrorMessage(err.message || 'फोटो प्रोसेस गर्न सकिएन। कृपया विवरण हातैले भर्नुहोस्।');
+      const rawMsg = typeof err?.message === 'string' ? err.message : '';
+      const hasTechnicalDetails = !rawMsg || /status\s*\d{3}|code|fetch|network|json|\{/i.test(rawMsg);
+      setOcrErrorMessage(
+        hasTechnicalDetails
+          ? 'फोटो प्रोसेस गर्न सकिएन। कृपया स्पष्ट फोटो खिच्नुहोस् वा विवरण हातैले भर्नुहोस्।'
+          : rawMsg
+      );
     } finally {
       setIsScanningId(false);
     }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { PurchaseTransaction } from '../types/bullion';
+import { PurchaseTransaction, ShopDetails } from '../types/bullion';
 import { formatNPR, toNepaliDigits } from '../utils/nepalBullionCalculations';
+import { exportPoliceAuditRegisterToPDF } from '../utils/registerPdfExporter';
 import { 
   FileSpreadsheet, 
   Search, 
@@ -19,12 +20,15 @@ import {
   X,
   FileText,
   SlidersHorizontal,
-  RefreshCw
+  RefreshCw,
+  Loader2,
+  FileDown
 } from 'lucide-react';
 import { removeTransaction } from '../services/dataStorageService';
 
 interface PoliceAuditRegisterProps {
   transactions: PurchaseTransaction[];
+  shop?: ShopDetails;
   onViewDeed: (tx: PurchaseTransaction) => void;
   onNewTransaction: () => void;
   onRefreshData?: () => void;
@@ -32,6 +36,7 @@ interface PoliceAuditRegisterProps {
 
 export const PoliceAuditRegister: React.FC<PoliceAuditRegisterProps> = ({
   transactions,
+  shop,
   onViewDeed,
   onNewTransaction,
   onRefreshData,
@@ -45,6 +50,8 @@ export const PoliceAuditRegister: React.FC<PoliceAuditRegisterProps> = ({
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [pdfFeedback, setPdfFeedback] = useState<string | null>(null);
   
   // Quick View Modal
   const [quickViewTx, setQuickViewTx] = useState<PurchaseTransaction | null>(null);
@@ -232,6 +239,34 @@ export const PoliceAuditRegister: React.FC<PoliceAuditRegisterProps> = ({
     document.body.removeChild(link);
   };
 
+  const handleExportPDF = async () => {
+    if (filtered.length === 0 || isExportingPdf) return;
+    setIsExportingPdf(true);
+    setPdfFeedback(null);
+    try {
+      await exportPoliceAuditRegisterToPDF({
+        transactions: filtered,
+        totalCount: transactions.length,
+        shop,
+        filters: {
+          searchQuery,
+          startDate,
+          endDate,
+          metalFilter,
+          paymentFilter,
+          districtFilter,
+          complianceFilter,
+        },
+        filename: `nepal_bullion_audit_register_${new Date().toISOString().split('T')[0]}`,
+      });
+    } catch (err) {
+      console.error('Register PDF export failed:', err);
+      setPdfFeedback('PDF तयार गर्न सकिएन। कृपया पुनः प्रयास गर्नुहोस्।');
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
   const handleDelete = async (txId: string, serial: string) => {
     if (window.confirm(`के तपाईं निश्चित हुनुहुन्छ? सिरीयल नं. ${serial} भएको सम्झौता हटाउन चाहनुहुन्छ?`)) {
       await removeTransaction(txId);
@@ -352,11 +387,33 @@ export const PoliceAuditRegister: React.FC<PoliceAuditRegisterProps> = ({
               <button
                 type="button"
                 onClick={exportCSV}
-                className="px-3.5 py-2 text-xs font-semibold text-neutral-700 bg-neutral-100 hover:bg-neutral-200 border border-neutral-200 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                disabled={filtered.length === 0}
+                className="px-3.5 py-2 text-xs font-semibold text-neutral-700 bg-neutral-100 hover:bg-neutral-200 disabled:opacity-50 disabled:cursor-not-allowed border border-neutral-200 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
                 title="प्रहरी वा अडिट प्रयोजनका लागि एक्सेल/CSV फाइल डाउनलोड गर्नुहोस्"
               >
                 <Download className="w-3.5 h-3.5" />
                 <span>Export CSV</span>
+              </button>
+
+              {/* Export to PDF (Formatted A4 Archival Register) */}
+              <button
+                type="button"
+                onClick={handleExportPDF}
+                disabled={isExportingPdf || filtered.length === 0}
+                className="px-3.5 py-2 text-xs font-semibold text-amber-950 bg-amber-100 hover:bg-amber-200 disabled:opacity-50 disabled:cursor-not-allowed border border-amber-300 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                title="भौतिक अभिलेखका लागि हालको फिल्टर गरिएको सूचीको A4 PDF डाउनलोड गर्नुहोस्"
+              >
+                {isExportingPdf ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Exporting PDF...</span>
+                  </>
+                ) : (
+                  <>
+                    <FileDown className="w-3.5 h-3.5" />
+                    <span>Export to PDF</span>
+                  </>
+                )}
               </button>
 
               {/* New Button */}
@@ -369,6 +426,20 @@ export const PoliceAuditRegister: React.FC<PoliceAuditRegisterProps> = ({
               </button>
             </div>
           </div>
+
+          {pdfFeedback && (
+            <div className="p-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-900 flex items-center justify-between gap-2">
+              <span>{pdfFeedback}</span>
+              <button
+                type="button"
+                onClick={() => setPdfFeedback(null)}
+                className="text-red-700 hover:text-red-950 font-semibold cursor-pointer"
+                aria-label="Close alert"
+              >
+                ✕
+              </button>
+            </div>
+          )}
 
           {/* Primary Search & Date Range Filter Bar (Always Visible) */}
           <div className="pt-3 border-t border-neutral-100 flex flex-col lg:flex-row lg:items-end gap-3">

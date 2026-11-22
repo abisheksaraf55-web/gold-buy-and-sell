@@ -42,8 +42,8 @@ app.post('/api/ocr-id', async (req, res) => {
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    console.error('GEMINI_API_KEY is not defined in server environment');
-    return res.status(500).json({ error: 'Server AI configuration missing (GEMINI_API_KEY)' });
+    console.error('OCR service configuration missing in server environment');
+    return res.status(500).json({ error: 'परिचयपत्र पहिचान सेवा हाल उपलब्ध छैन। कृपया विवरण हातैले भर्नुहोस्।' });
   }
 
   try {
@@ -187,7 +187,7 @@ Output only valid JSON according to the schema.`;
 
     const rawText = response.text?.trim() || '';
     if (!rawText) {
-      return res.status(500).json({ error: 'No response from OCR engine' });
+      return res.status(500).json({ error: 'परिचयपत्रबाट विवरण प्राप्त गर्न सकिएन। कृपया स्पष्ट फोटो अपलोड गर्नुहोस्।' });
     }
 
     // Strip markdown code fences if present (e.g. ```json ... ```)
@@ -202,13 +202,13 @@ Output only valid JSON according to the schema.`;
       data = JSON.parse(cleanedText);
     } catch (parseError) {
       console.error('Failed to parse JSON output from Gemini:', rawText);
-      return res.status(500).json({ error: 'Failed to parse extracted document details' });
+      return res.status(500).json({ error: 'परिचयपत्रको विवरण पढ्न सकिएन। कृपया स्पष्ट फोटो खिची पुनः प्रयास गर्नुहोस्।' });
     }
 
     return res.json(data);
   } catch (error: any) {
     console.error('OCR API Error:', error);
-    return res.status(500).json({ error: error.message || 'Failed to analyze document' });
+    return res.status(500).json({ error: 'तस्बिरबाट परिचयपत्र पहिचान गर्न सकिएन। कृपया स्पष्ट फोटो खिच्नुहोस् वा विवरण हातैले भर्नुहोस्।' });
   }
 });
 

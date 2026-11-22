@@ -60,10 +60,10 @@ export const DataStorageModal: React.FC<DataStorageModalProps> = ({
         type: 'success',
         message: 'तपाईंको सम्पूर्ण डेटाब्याकअप सुरक्षित रूपमा डाउनलोड भयो (Backup downloaded successfully).'
       });
-    } catch (err: any) {
+    } catch {
       setFeedback({
         type: 'error',
-        message: `डाउनलोड असफल: ${err?.message || 'अज्ञात त्रुटि'}`
+        message: 'डेटा ब्याकअप डाउनलोड गर्न सकिएन। कृपया पुनः प्रयास गर्नुहोस्।'
       });
     }
   };
@@ -93,9 +93,9 @@ export const DataStorageModal: React.FC<DataStorageModalProps> = ({
         } else {
           setFeedback({ type: 'error', message: res.message });
         }
-      } catch (err: any) {
+      } catch {
         setIsSyncing(false);
-        setFeedback({ type: 'error', message: 'फाइल पढ्न सकिएन: ' + (err?.message || '') });
+        setFeedback({ type: 'error', message: 'ब्याकअप फाइल पढ्न सकिएन। कृपया मान्य JSON फाइल छान्नुहोस्।' });
       }
     };
     reader.readAsText(file);
@@ -119,11 +119,11 @@ export const DataStorageModal: React.FC<DataStorageModalProps> = ({
         type: 'success',
         message: 'क्लाउड डाटाबेस (Firebase Firestore) सँग सबै खरिद तथा सिरीयल नम्बर सिन्क भयो।'
       });
-    } catch (err: any) {
+    } catch {
       setIsSyncing(false);
       setFeedback({
         type: 'error',
-        message: 'सिन्क गर्न सकिएन: ' + (err?.message || '')
+        message: 'क्लाउड सर्भरसँग सिन्क गर्न सकिएन। कृपया इन्टरनेट जडान जाँच गरी पुनः प्रयास गर्नुहोस्।'
       });
     }
   };

@@ -140,11 +140,6 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({
           className="w-full cursor-crosshair touch-none block"
           style={{ height: `${height}px` }}
         />
-        {!hasContent && (
-          <div className="absolute inset-0 pointer-events-none flex items-center justify-center text-neutral-300 text-xs font-sans tracking-wide">
-            यहाँ हस्ताक्षर गर्नुहोस् (Sign here using mouse or finger)
-          </div>
-        )}
       </div>
     </div>
   );

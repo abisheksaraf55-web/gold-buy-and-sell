@@ -28,6 +28,7 @@ import { LegalSafetyGuideModal } from './components/LegalSafetyGuideModal';
 import { ShopSettingsModal } from './components/ShopSettingsModal';
 import { DataStorageModal } from './components/DataStorageModal';
 import { DashboardView } from './components/DashboardView';
+import { DemoPresentationModal } from './components/DemoPresentationModal';
 import { 
   Database,
   Cloud,
@@ -47,7 +48,8 @@ import {
   HardDrive,
   LogOut,
   Loader2,
-  LayoutDashboard
+  LayoutDashboard,
+  Presentation
 } from 'lucide-react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth, signInWithGoogle, signOutGoogle } from './firebase';
@@ -82,6 +84,7 @@ export default function App() {
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [isShopSettingsOpen, setIsShopSettingsOpen] = useState(false);
   const [isDataStorageOpen, setIsDataStorageOpen] = useState(false);
+  const [isDemoPresentationOpen, setIsDemoPresentationOpen] = useState(false);
 
   // Listen to Firebase Auth state changes
   useEffect(() => {
@@ -106,14 +109,16 @@ export default function App() {
       await signInWithGoogle();
     } catch (err: any) {
       const code = err?.code || '';
-      if (code === 'auth/popup-closed-by-user') {
+      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
         setAuthError('Google लगइन पपअप बन्द गरियो। कृपया पुनः प्रयास गर्नुहोस्।');
       } else if (code === 'auth/popup-blocked') {
-        setAuthError('ब्राउजरले पपअप रोक्यो (Popup Blocked)। कृपया यस साइटको लागि पपअप अनुमति दिनुहोस्।');
+        setAuthError('ब्राउजरले पपअप रोक्यो। कृपया यस साइटको लागि पपअप अनुमति दिनुहोस्।');
       } else if (code === 'auth/unauthorized-domain') {
-        setAuthError('यो डोमेन Firebase Console मा अधिकृत गरिएको छैन (Unauthorized domain)।');
+        setAuthError('यो डोमेन लगइनका लागि अधिकृत गरिएको छैन।');
+      } else if (code === 'auth/network-request-failed') {
+        setAuthError('इन्टरनेट जडानमा समस्या देखियो। कृपया नेटवर्क जाँच गरी पुनः प्रयास गर्नुहोस्।');
       } else {
-        setAuthError(err?.message || 'Google बाट लगइन गर्न सकिएन। कृपया पुनः प्रयास गर्नुहोस्।');
+        setAuthError('Google बाट लगइन गर्न सकिएन। कृपया पुनः प्रयास गर्नुहोस्।');
       }
     } finally {
       setIsSigningIn(false);
@@ -453,6 +458,26 @@ export default function App() {
                   </div>
                   <ChevronRight className="w-3.5 h-3.5 opacity-60" />
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSidebarOpen(false);
+                    setIsDemoPresentationOpen(true);
+                  }}
+                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-neutral-800/80 hover:bg-amber-600 text-white border border-neutral-700/80 hover:border-amber-500 transition-all cursor-pointer font-medium"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Presentation className="w-4 h-4 text-amber-400" />
+                    <div className="text-left">
+                      <span className="block font-semibold">प्रदर्शन PowerPoint (Demo PPTX)</span>
+                      <span className="block text-[10px] text-neutral-400">
+                        स्लाइड हेर्नुहोस् र .pptx डाउनलोड गर्नुहोस्
+                      </span>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-3.5 h-3.5 opacity-60" />
+                </button>
               </div>
             </div>
 
@@ -620,6 +645,7 @@ export default function App() {
           {view === 'register' && (
             <PoliceAuditRegister
               transactions={transactions}
+              shop={shop}
               onViewDeed={handleViewDeed}
               onNewTransaction={() => setView('form')}
               onRefreshData={refreshAllData}
@@ -667,6 +693,13 @@ export default function App() {
         onClose={() => setIsDataStorageOpen(false)}
         transactions={transactions}
         onRefreshData={refreshAllData}
+      />
+
+      <DemoPresentationModal
+        isOpen={isDemoPresentationOpen}
+        onClose={() => setIsDemoPresentationOpen(false)}
+        shop={shop}
+        transactions={transactions}
       />
     </div>
   );

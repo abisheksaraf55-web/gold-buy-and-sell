@@ -13,8 +13,10 @@ import {
   FileText,
   ChevronRight,
   TrendingUp,
+  Presentation,
 } from 'lucide-react';
 import { ShopSettingsModal } from './ShopSettingsModal';
+import { DemoPresentationModal } from './DemoPresentationModal';
 import sealBadge from '../assets/images/nepal_bullion_seal_1790317148844.jpg';
 
 interface ShopSetupPageProps {
@@ -39,6 +41,7 @@ export const ShopSetupPage: React.FC<ShopSetupPageProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isShopModalOpen, setIsShopModalOpen] = useState(false);
+  const [isDemoOpen, setIsDemoOpen] = useState(false);
 
   const handleNavigateFromMenu = async (targetView: 'dashboard' | 'form' | 'register') => {
     setIsMenuOpen(false);
@@ -210,6 +213,21 @@ export const ShopSetupPage: React.FC<ShopSetupPageProps> = ({
                   </div>
                   <ChevronRight className="w-3.5 h-3.5 opacity-60" />
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    setIsDemoOpen(true);
+                  }}
+                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Presentation className="w-4 h-4 text-amber-400" />
+                    <span>प्रदर्शन PowerPoint (Demo PPTX)</span>
+                  </div>
+                  <ChevronRight className="w-3.5 h-3.5 opacity-60" />
+                </button>
               </div>
             </div>
 
@@ -356,6 +374,12 @@ export const ShopSetupPage: React.FC<ShopSetupPageProps> = ({
           setFormData(updated);
           await onCompleteSetup(updated);
         }}
+      />
+
+      <DemoPresentationModal
+        isOpen={isDemoOpen}
+        onClose={() => setIsDemoOpen(false)}
+        shop={formData}
       />
     </div>
   );

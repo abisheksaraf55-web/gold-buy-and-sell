@@ -162,10 +162,10 @@ export function importFullBackupJSON(
       message: `${validTransactions.length} वटा खरिद सम्झौता तथा पसल विवरण सफलतापूर्वक रिस्टोर भयो।`,
       count: validTransactions.length,
     };
-  } catch (err: any) {
+  } catch {
     return {
       success: false,
-      message: `ब्याकअप रिस्टोर गर्न सकिएन: ${err?.message || 'पार्सिङ त्रुटि'}`,
+      message: 'ब्याकअप रिस्टोर गर्न सकिएन। कृपया मान्य ब्याकअप फाइल छान्नुहोस्।',
     };
   }
 }

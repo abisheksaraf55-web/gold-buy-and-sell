@@ -187,11 +187,6 @@ export const ThumbprintPad: React.FC<ThumbprintPadProps> = ({
           className="cursor-crosshair touch-none block"
           style={{ width: `${width}px`, height: `${height}px` }}
         />
-        {!hasContent && (
-          <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center p-2.5 text-neutral-400 text-[10px] leading-snug">
-            <span>स्क्यानर/मसीको वास्तविक ल्याप्चे अपलोड गर्नुहोस् वा प्रिन्टमा लिनुहोस्</span>
-          </div>
-        )}
       </div>
 
       {/* Hidden real-photo / camera inputs */}
